@@ -1,7 +1,10 @@
-streamlit
 pandas
 numpy
 scikit-learn
 tensorflow
+fastapi
+uvicorn
+requests
+joblib
 plotly
 matplotlib
