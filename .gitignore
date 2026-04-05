@@ -1,8 +1,6 @@
 archive.zip
 __pycache__/
 *.h5
-*.keras
-*.joblib
 .env
 .venv/
 env/
