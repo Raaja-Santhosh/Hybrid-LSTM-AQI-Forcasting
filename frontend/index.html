@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>SENTINEL_AQI | Air Quality Intelligence</title>
+<meta name="description" content="Hybrid LSTM-Based AQI Forecasting & Health Risk Intelligence System">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script>
+    tailwind.config = {
+        darkMode: "class",
+        theme: {
+            extend: {
+                colors: {
+                    "surface-dim": "#0c0e14",
+                    "surface": "#0c0e14",
+                    "surface-container-lowest": "#000000",
+                    "surface-container-low": "#11131a",
+                    "surface-container": "#171921",
+                    "surface-container-high": "#1d1f27",
+                    "surface-container-highest": "#23262e",
+                    "surface-bright": "#292c35",
+                    "surface-variant": "#23262e",
+                    "on-surface": "#e5e4ed",
+                    "on-surface-variant": "#aaaab3",
+                    "on-background": "#e5e4ed",
+                    "primary": "#57fe81",
+                    "primary-dim": "#44ef74",
+                    "primary-container": "#00cf59",
+                    "on-primary": "#005d24",
+                    "on-primary-container": "#003c14",
+                    "secondary": "#ff716a",
+                    "secondary-dim": "#ff716a",
+                    "secondary-container": "#a80619",
+                    "on-secondary": "#490005",
+                    "on-secondary-container": "#ffdbd8",
+                    "tertiary": "#52b9ff",
+                    "tertiary-container": "#20acfa",
+                    "on-tertiary": "#003450",
+                    "error": "#ff7351",
+                    "error-container": "#b92902",
+                    "outline": "#74757d",
+                    "outline-variant": "#46484f",
+                    "inverse-surface": "#faf8ff",
+                },
+                borderRadius: { DEFAULT: "1rem", lg: "2rem", xl: "3rem", full: "9999px" },
+                fontFamily: { headline: ["Manrope"], body: ["Manrope"], label: ["Manrope"] },
+            },
+        },
+    }
+</script>
+<style>
+    body { font-family: 'Manrope', sans-serif; }
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    .glass-panel { background: rgba(29,31,39,0.6); backdrop-filter: blur(12px); }
+    .page-section { display: none; }
+    .page-section.active { display: block; }
+    .nav-link.active { color: #57fe81; background: #1d1f27; border-left: 4px solid #57fe81; }
+    .nav-link { border-left: 4px solid transparent; }
+    .status-glow { box-shadow: 0 0 12px rgba(87,254,129,0.3); }
+    .primary-gradient { background: linear-gradient(135deg, #57fe81 0%, #00cf59 100%); }
+    @keyframes pulse-glow { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+    .animate-pulse-glow { animation: pulse-glow 2s infinite; }
+    .skeleton { background: linear-gradient(90deg, #1d1f27 25%, #23262e 50%, #1d1f27 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+</style>
+</head>
+<body class="bg-surface text-on-surface overflow-hidden">
+
+<!-- ═══════ TOP ALERT BANNER ═══════ -->
+<div id="alertBanner" class="fixed top-0 left-0 right-0 z-[60] bg-secondary-container/20 backdrop-blur-md border-b border-secondary/20 py-2 px-6 flex justify-between items-center hidden">
+    <div class="flex items-center gap-3">
+        <span class="material-symbols-outlined text-secondary animate-pulse" style="font-variation-settings: 'FILL' 1;">warning</span>
+        <p id="alertText" class="text-xs font-bold tracking-widest text-secondary"></p>
+    </div>
+    <button onclick="document.getElementById('alertBanner').classList.add('hidden')" class="text-secondary/60 hover:text-secondary transition-colors">
+        <span class="material-symbols-outlined text-sm">close</span>
+    </button>
+</div>
+
+<div class="flex h-screen">
+
+<!-- ═══════ SIDEBAR ═══════ -->
+<aside class="fixed left-0 top-0 h-full flex flex-col border-r border-[#1d1f27] bg-[#0c0e14] w-64 z-50">
+    <div class="p-6 flex items-center gap-3">
+        <div class="w-10 h-10 rounded bg-primary-container/20 flex items-center justify-center border border-primary/20">
+            <span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">sensors</span>
+        </div>
+        <div>
+            <h1 class="text-primary font-black tracking-tight leading-none text-lg">NODE_SENTINEL</h1>
+            <p class="text-on-surface-variant text-[10px] uppercase tracking-widest font-bold">Precision Monitoring</p>
+        </div>
+    </div>
+
+    <!-- City Selector -->
+    <div class="px-6 mb-4">
+        <select id="citySelector" onchange="onCityChange()" class="w-full bg-surface-container-high border border-outline-variant/20 text-on-surface text-sm rounded-lg px-3 py-2 focus:ring-1 focus:ring-primary focus:border-primary">
+            <option>Loading cities...</option>
+        </select>
+    </div>
+
+    <nav class="flex-1 px-2 space-y-1">
+        <a class="nav-link active px-4 py-3 flex items-center gap-3 transition-all cursor-pointer text-sm font-medium" data-page="dashboard" onclick="switchPage('dashboard')">
+            <span class="material-symbols-outlined">dashboard</span><span>Dashboard</span>
+        </a>
+        <a class="nav-link px-4 py-3 flex items-center gap-3 transition-all cursor-pointer text-on-surface/50 hover:text-on-surface hover:bg-surface-container-low text-sm font-medium" data-page="live" onclick="switchPage('live')">
+            <span class="material-symbols-outlined">sensors</span><span>Live Monitor</span>
+        </a>
+        <a class="nav-link px-4 py-3 flex items-center gap-3 transition-all cursor-pointer text-on-surface/50 hover:text-on-surface hover:bg-surface-container-low text-sm font-medium" data-page="forecast" onclick="switchPage('forecast')">
+            <span class="material-symbols-outlined">online_prediction</span><span>Forecast</span>
+        </a>
+        <a class="nav-link px-4 py-3 flex items-center gap-3 transition-all cursor-pointer text-on-surface/50 hover:text-on-surface hover:bg-surface-container-low text-sm font-medium" data-page="health" onclick="switchPage('health')">
+            <span class="material-symbols-outlined">health_and_safety</span><span>Health Risk</span>
+        </a>
+        <a class="nav-link px-4 py-3 flex items-center gap-3 transition-all cursor-pointer text-on-surface/50 hover:text-on-surface hover:bg-surface-container-low text-sm font-medium" data-page="history" onclick="switchPage('history')">
+            <span class="material-symbols-outlined">timeline</span><span>Historical Trends</span>
+        </a>
+        <a class="nav-link px-4 py-3 flex items-center gap-3 transition-all cursor-pointer text-on-surface/50 hover:text-on-surface hover:bg-surface-container-low text-sm font-medium" data-page="compare" onclick="switchPage('compare')">
+            <span class="material-symbols-outlined">compare_arrows</span><span>City Compare</span>
+        </a>
+        <a class="nav-link px-4 py-3 flex items-center gap-3 transition-all cursor-pointer text-on-surface/50 hover:text-on-surface hover:bg-surface-container-low text-sm font-medium" data-page="metrics" onclick="switchPage('metrics')">
+            <span class="material-symbols-outlined">analytics</span><span>Model Metrics</span>
+        </a>
+        <a class="nav-link px-4 py-3 flex items-center gap-3 transition-all cursor-pointer text-on-surface/50 hover:text-on-surface hover:bg-surface-container-low text-sm font-medium" data-page="alerts" onclick="switchPage('alerts')">
+            <span class="material-symbols-outlined">notifications_active</span><span>Alerts</span>
+        </a>
+        <a class="nav-link px-4 py-3 flex items-center gap-3 transition-all cursor-pointer text-on-surface/50 hover:text-on-surface hover:bg-surface-container-low text-sm font-medium" data-page="reports" onclick="switchPage('reports')">
+            <span class="material-symbols-outlined">description</span><span>Reports</span>
+        </a>
+    </nav>
+
+    <div class="mt-auto px-4 pb-6 space-y-4">
+        <div class="flex items-center gap-2 px-4">
+            <span id="connDot" class="w-2 h-2 rounded-full bg-primary animate-pulse-glow"></span>
+            <span id="connLabel" class="text-[10px] font-bold text-primary/80 uppercase tracking-widest">Connecting...</span>
+        </div>
+    </div>
+</aside>
+
+<!-- ═══════ MAIN CONTENT ═══════ -->
+<main class="flex-1 ml-64 overflow-y-auto bg-surface">
+
+<!-- Top Bar -->
+<header class="flex justify-between items-center px-8 h-16 w-full border-b border-outline-variant/15 bg-surface-dim sticky top-0 z-40">
+    <div class="flex items-center gap-4">
+        <div class="text-xl font-bold tracking-tighter text-primary uppercase">SENTINEL_AQI</div>
+        <div class="h-6 w-[1px] bg-[#1d1f27]"></div>
+        <span id="sourceTag" class="text-[10px] font-bold text-primary/80 uppercase tracking-widest">Initializing...</span>
+    </div>
+    <div class="flex items-center gap-4">
+        <span id="lastUpdated" class="text-[10px] text-on-surface-variant font-mono"></span>
+    </div>
+</header>
+
+<!-- ══════════════════════════════════════════
+     PAGE 1: DASHBOARD
+     ══════════════════════════════════════════ -->
+<div id="page-dashboard" class="page-section active p-8 space-y-6 max-w-7xl">
+    <header class="flex justify-between items-center mb-4">
+        <div>
+            <span class="text-[10px] text-primary font-bold tracking-[0.3em] uppercase">Tactical Monitoring</span>
+            <h2 class="text-3xl font-extrabold tracking-tighter text-on-surface">System Overview</h2>
+        </div>
+    </header>
+
+    <div class="grid grid-cols-12 gap-6">
+        <!-- Main AQI Card -->
+        <div class="col-span-8 bg-surface-container-low rounded-lg p-8 relative overflow-hidden">
+            <div class="absolute -right-20 -bottom-20 w-80 h-80 rounded-full bg-secondary/5 blur-[80px]"></div>
+            <div class="relative z-10 flex justify-between h-full">
+                <div class="flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center gap-2 mb-4">
+                            <span id="dashBadge" class="bg-secondary-container/40 text-secondary text-[10px] font-bold px-2 py-1 rounded tracking-widest uppercase">Loading</span>
+                            <span id="dashUpdated" class="text-on-surface-variant text-[10px] uppercase tracking-widest font-medium"></span>
+                        </div>
+                        <h3 class="text-5xl font-black text-on-surface tracking-tighter mb-2">AQI STATUS</h3>
+                        <p id="dashAdvice" class="text-on-surface-variant text-lg max-w-md">Connecting to satellite feed...</p>
+                    </div>
+                    <div class="flex gap-8 mt-12">
+                        <div class="flex flex-col">
+                            <span class="text-xs text-on-surface-variant font-medium tracking-wide">HEALTH IMPACT</span>
+                            <span id="dashHealthImpact" class="text-secondary font-bold text-xl">--</span>
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="text-xs text-on-surface-variant font-medium tracking-wide">DATA SOURCE</span>
+                            <span id="dashSource" class="text-on-surface font-bold text-xl">--</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex flex-col items-end justify-center">
+                    <div class="relative">
+                        <svg class="w-48 h-48 -rotate-90">
+                            <circle class="text-surface-container-highest" cx="96" cy="96" fill="transparent" r="88" stroke="currentColor" stroke-width="12"></circle>
+                            <circle id="aqiArc" class="text-secondary" cx="96" cy="96" fill="transparent" r="88" stroke="currentColor" stroke-dasharray="552.92" stroke-dashoffset="552" stroke-linecap="round" stroke-width="12"></circle>
+                        </svg>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center">
+                            <span id="dashAqiValue" class="text-6xl font-black text-secondary tracking-tighter">--</span>
+                            <span id="dashAqiLabel" class="text-[10px] font-bold text-on-surface-variant tracking-[0.2em] uppercase">Loading</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Side Pollutant Cards -->
+        <div class="col-span-4 flex flex-col gap-6">
+            <div class="bg-surface-container-high p-6 rounded-lg flex justify-between items-center hover:bg-surface-container-highest transition-colors">
+                <div>
+                    <p class="text-[10px] text-on-surface-variant font-bold tracking-widest mb-1">PM2.5 CONCENTRATION</p>
+                    <h4 class="text-2xl font-bold text-on-surface"><span id="dashPm25">--</span> <span class="text-sm font-normal text-on-surface-variant">µg/m³</span></h4>
+                </div>
+                <div class="w-12 h-12 rounded-lg bg-secondary/10 flex items-center justify-center text-secondary">
+                    <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">air</span>
+                </div>
+            </div>
+            <div class="bg-surface-container-high p-6 rounded-lg flex justify-between items-center hover:bg-surface-container-highest transition-colors">
+                <div>
+                    <p class="text-[10px] text-on-surface-variant font-bold tracking-widest mb-1">PM10 CONCENTRATION</p>
+                    <h4 class="text-2xl font-bold text-on-surface"><span id="dashPm10">--</span> <span class="text-sm font-normal text-on-surface-variant">µg/m³</span></h4>
+                </div>
+                <div class="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                    <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">cloud</span>
+                </div>
+            </div>
+            <div class="bg-surface-container-high p-6 rounded-lg flex justify-between items-center hover:bg-surface-container-highest transition-colors">
+                <div>
+                    <p class="text-[10px] text-on-surface-variant font-bold tracking-widest mb-1">SULPHUR DIOXIDE</p>
+                    <h4 class="text-2xl font-bold text-on-surface"><span id="dashSo2">--</span> <span class="text-sm font-normal text-on-surface-variant">µg/m³</span></h4>
+                </div>
+                <div class="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                    <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">detector_smoke</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Row: NO2 and SO2 -->
+        <div class="col-span-4 bg-surface-container-low p-6 rounded-lg">
+            <div class="flex justify-between items-start mb-6">
+                <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                    <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">science</span>
+                </div>
+                <span id="no2Status" class="text-primary text-[10px] font-bold tracking-widest uppercase">--</span>
+            </div>
+            <p class="text-[10px] text-on-surface-variant font-bold tracking-widest mb-1">NITROGEN DIOXIDE (NO2)</p>
+            <div class="flex items-baseline gap-2">
+                <h4 id="dashNo2" class="text-3xl font-black text-on-surface">--</h4>
+                <span class="text-sm text-on-surface-variant">µg/m³</span>
+            </div>
+        </div>
+        <div class="col-span-4 bg-surface-container-low p-6 rounded-lg">
+            <div class="flex justify-between items-start mb-6">
+                <div class="w-10 h-10 rounded-full bg-tertiary/10 flex items-center justify-center text-tertiary">
+                    <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">my_location</span>
+                </div>
+                <span class="text-tertiary text-[10px] font-bold tracking-widest uppercase">LIVE</span>
+            </div>
+            <p class="text-[10px] text-on-surface-variant font-bold tracking-widest mb-1">SELECTED CITY</p>
+            <div class="flex items-baseline gap-2">
+                <h4 id="dashCity" class="text-3xl font-black text-on-surface">--</h4>
+            </div>
+        </div>
+        <div class="col-span-4 bg-surface-container-low p-6 rounded-lg">
+            <div class="flex justify-between items-start mb-6">
+                <div class="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center text-secondary">
+                    <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">emergency</span>
+                </div>
+                <span id="riskTag" class="text-secondary text-[10px] font-bold tracking-widest uppercase">--</span>
+            </div>
+            <p class="text-[10px] text-on-surface-variant font-bold tracking-widest mb-1">RISK CLASSIFICATION</p>
+            <div class="flex items-baseline gap-2">
+                <h4 id="dashRiskLevel" class="text-3xl font-black text-on-surface">--</h4>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     PAGE 2: LIVE MONITOR
+     ══════════════════════════════════════════ -->
+<div id="page-live" class="page-section p-8 space-y-6 max-w-[1600px] mx-auto">
+    <div class="flex justify-between items-end">
+        <div>
+            <span class="text-[10px] font-bold text-primary uppercase tracking-widest block mb-1">Telemetry Stream</span>
+            <h2 class="text-4xl font-bold tracking-tight text-on-surface">Simulated IoT Feed</h2>
+        </div>
+        <div class="flex gap-4">
+            <div class="glass-panel px-4 py-2 rounded-lg border border-primary/10">
+                <span class="text-[9px] text-on-surface-variant block uppercase font-bold">Refresh Rate</span>
+                <span class="text-primary font-mono text-lg">60s</span>
+            </div>
+        </div>
+    </div>
+    <div class="grid grid-cols-12 gap-6">
+        <div class="col-span-3 bg-surface-container-low rounded-xl p-6 border-l-2 border-primary/40">
+            <div class="flex justify-between items-start mb-6">
+                <span class="text-xs font-bold text-on-surface-variant uppercase">PM2.5 Level</span>
+                <span id="livePm25Tag" class="px-2 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-bold">--</span>
+            </div>
+            <div class="flex items-baseline gap-2 mb-2">
+                <span id="livePm25" class="text-5xl font-black tracking-tighter">--</span>
+                <span class="text-on-surface-variant text-sm font-medium">µg/m³</span>
+            </div>
+            <div class="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden mt-4">
+                <div id="livePm25Bar" class="bg-primary h-full w-[0%] transition-all duration-500" style="box-shadow: 0 0 8px #57fe81;"></div>
+            </div>
+        </div>
+        <div class="col-span-3 bg-surface-container-low rounded-xl p-6 border-l-2 border-primary/40">
+            <div class="flex justify-between items-start mb-6">
+                <span class="text-xs font-bold text-on-surface-variant uppercase">PM10 Level</span>
+                <span id="livePm10Tag" class="px-2 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-bold">--</span>
+            </div>
+            <div class="flex items-baseline gap-2 mb-2">
+                <span id="livePm10" class="text-5xl font-black tracking-tighter">--</span>
+                <span class="text-on-surface-variant text-sm font-medium">µg/m³</span>
+            </div>
+            <div class="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden mt-4">
+                <div id="livePm10Bar" class="bg-primary h-full w-[0%] transition-all duration-500" style="box-shadow: 0 0 8px #57fe81;"></div>
+            </div>
+        </div>
+        <div class="col-span-3 bg-surface-container-low rounded-xl p-6 border-l-2 border-secondary/40">
+            <div class="flex justify-between items-start mb-6">
+                <span class="text-xs font-bold text-on-surface-variant uppercase">NO2 Index</span>
+                <span id="liveNo2Tag" class="px-2 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-bold">--</span>
+            </div>
+            <div class="flex items-baseline gap-2 mb-2">
+                <span id="liveNo2" class="text-5xl font-black tracking-tighter">--</span>
+                <span class="text-on-surface-variant text-sm font-medium">µg/m³</span>
+            </div>
+            <div class="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden mt-4">
+                <div id="liveNo2Bar" class="bg-secondary h-full w-[0%] transition-all duration-500" style="box-shadow: 0 0 8px #ff716a;"></div>
+            </div>
+        </div>
+        <div class="col-span-3 bg-surface-container-low rounded-xl p-6 border-l-2 border-primary/40">
+            <div class="flex justify-between items-start mb-6">
+                <span class="text-xs font-bold text-on-surface-variant uppercase">SO2 Level</span>
+                <span id="liveSo2Tag" class="px-2 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-bold">--</span>
+            </div>
+            <div class="flex items-baseline gap-2 mb-2">
+                <span id="liveSo2" class="text-5xl font-black tracking-tighter">--</span>
+                <span class="text-on-surface-variant text-sm font-medium">µg/m³</span>
+            </div>
+            <div class="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden mt-4">
+                <div id="liveSo2Bar" class="bg-primary h-full w-[0%] transition-all duration-500" style="box-shadow: 0 0 8px #57fe81;"></div>
+            </div>
+        </div>
+
+        <!-- Process Log -->
+        <div class="col-span-12 bg-surface-container-low rounded-xl p-6 border border-outline-variant/10">
+            <div class="flex items-center gap-2 mb-6">
+                <span class="material-symbols-outlined text-primary text-sm">terminal</span>
+                <h3 class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">API Response Log</h3>
+            </div>
+            <div id="processLog" class="space-y-2 font-mono text-[11px] max-h-[200px] overflow-y-auto pr-2">
+                <div class="flex gap-4 p-2 opacity-60"><span class="text-primary/60">--:--:--</span><span class="text-on-surface-variant">Waiting for first data fetch...</span></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     PAGE 3: FORECAST
+     ══════════════════════════════════════════ -->
+<div id="page-forecast" class="page-section p-8 space-y-8 max-w-7xl">
+    <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div>
+            <div class="flex items-center gap-2 mb-1">
+                <span class="h-2 w-2 rounded-full bg-primary animate-pulse"></span>
+                <span class="text-[10px] font-bold text-primary uppercase tracking-[0.2em]">Predictive Engine</span>
+            </div>
+            <h2 class="text-4xl font-extrabold tracking-tight text-on-surface">Environmental Forecast</h2>
+            <p class="text-on-surface-variant text-sm max-w-md mt-2">LSTM-ARIMA hybrid analysis. Click "Run Prediction" to generate forecasts.</p>
+        </div>
+        <button id="runPredictBtn" onclick="runPrediction()" class="px-6 py-3 primary-gradient text-on-primary font-bold text-sm rounded-lg hover:scale-105 active:scale-95 transition-all shadow-[0_10px_30px_rgba(87,254,129,0.2)]">
+            ⚡ Run AI Prediction
+        </button>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div class="bg-surface-container-high p-6 rounded-xl border border-outline-variant/10 hover:border-primary/30 transition-all">
+            <div class="flex justify-between items-start mb-4">
+                <span class="text-[10px] font-black text-on-surface-variant uppercase tracking-widest">+24H Forecast</span>
+                <span class="material-symbols-outlined text-secondary text-sm">trending_up</span>
+            </div>
+            <div class="flex items-baseline gap-2">
+                <span id="pred24" class="text-3xl font-black text-on-surface tracking-tighter">—</span>
+                <span class="text-xs text-on-surface-variant">AQI</span>
+            </div>
+            <p id="pred24Risk" class="mt-3 text-[10px] font-bold uppercase">Awaiting prediction</p>
+        </div>
+        <div class="bg-surface-container-high p-6 rounded-xl border border-outline-variant/10 hover:border-primary/30 transition-all">
+            <div class="flex justify-between items-start mb-4">
+                <span class="text-[10px] font-black text-on-surface-variant uppercase tracking-widest">+48H Forecast</span>
+                <span class="material-symbols-outlined text-tertiary text-sm">trending_flat</span>
+            </div>
+            <div class="flex items-baseline gap-2">
+                <span id="pred48" class="text-3xl font-black text-on-surface tracking-tighter">—</span>
+                <span class="text-xs text-on-surface-variant">AQI</span>
+            </div>
+            <p id="pred48Risk" class="mt-3 text-[10px] font-bold uppercase">Awaiting prediction</p>
+        </div>
+        <div class="bg-surface-container-high p-6 rounded-xl border border-outline-variant/10 hover:border-primary/30 transition-all">
+            <div class="flex justify-between items-start mb-4">
+                <span class="text-[10px] font-black text-on-surface-variant uppercase tracking-widest">+72H Forecast</span>
+                <span class="material-symbols-outlined text-primary text-sm">trending_down</span>
+            </div>
+            <div class="flex items-baseline gap-2">
+                <span id="pred72" class="text-3xl font-black text-on-surface tracking-tighter">—</span>
+                <span class="text-xs text-on-surface-variant">AQI</span>
+            </div>
+            <p id="pred72Risk" class="mt-3 text-[10px] font-bold uppercase">Awaiting prediction</p>
+        </div>
+        <div class="bg-surface-container-high p-6 rounded-xl border border-outline-variant/10 hover:border-primary/30 transition-all overflow-hidden relative">
+            <div class="flex justify-between items-start mb-4">
+                <span class="text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Data Source</span>
+            </div>
+            <div class="flex items-baseline gap-2">
+                <span id="predSource" class="text-lg font-black text-tertiary tracking-tighter">—</span>
+            </div>
+            <p id="predStatus" class="mt-3 text-[10px] text-on-surface-variant leading-relaxed">Click "Run AI Prediction" above</p>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     PAGE 4: HEALTH RISK
+     ══════════════════════════════════════════ -->
+<div id="page-health" class="page-section p-8 space-y-8 max-w-7xl">
+    <div>
+        <span class="text-[10px] font-bold text-secondary uppercase tracking-[0.2em] block mb-1">Health Advisory</span>
+        <h2 class="text-4xl font-extrabold tracking-tight text-on-surface">Risk Classification Center</h2>
+    </div>
+
+    <div id="healthMainCard" class="bg-surface-container-low rounded-xl p-8 border-l-4 border-secondary relative overflow-hidden">
+        <div class="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-secondary/5 blur-[60px]"></div>
+        <div class="relative z-10">
+            <h3 id="healthLevel" class="text-3xl font-black text-secondary mb-2">Loading...</h3>
+            <p id="healthAdvice" class="text-on-surface-variant text-lg max-w-2xl leading-relaxed">Fetching current conditions...</p>
+        </div>
+    </div>
+
+    <h3 class="text-xs font-black uppercase tracking-widest text-on-surface">Recommended Precautions</h3>
+    <div id="precautionGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Populated by JS -->
+    </div>
+
+    <!-- AQI Scale -->
+    <div class="bg-surface-container-low rounded-xl p-6">
+        <h3 class="text-xs font-black uppercase tracking-widest text-on-surface mb-4">AQI Scale Reference</h3>
+        <div class="grid grid-cols-3 md:grid-cols-6 gap-3">
+            <div class="p-3 rounded-lg bg-[#00e400]/10 text-center"><span class="text-xs font-bold text-[#00e400]">0-50</span><br><span class="text-[10px] text-on-surface-variant">Good</span></div>
+            <div class="p-3 rounded-lg bg-[#ffff00]/10 text-center"><span class="text-xs font-bold text-[#ffff00]">51-100</span><br><span class="text-[10px] text-on-surface-variant">Moderate</span></div>
+            <div class="p-3 rounded-lg bg-[#ff7e00]/10 text-center"><span class="text-xs font-bold text-[#ff7e00]">101-150</span><br><span class="text-[10px] text-on-surface-variant">Unhealthy (S)</span></div>
+            <div class="p-3 rounded-lg bg-[#ff0000]/10 text-center"><span class="text-xs font-bold text-[#ff0000]">151-200</span><br><span class="text-[10px] text-on-surface-variant">Unhealthy</span></div>
+            <div class="p-3 rounded-lg bg-[#8f3f97]/10 text-center"><span class="text-xs font-bold text-[#8f3f97]">201-300</span><br><span class="text-[10px] text-on-surface-variant">Very Unhealthy</span></div>
+            <div class="p-3 rounded-lg bg-[#7e0023]/10 text-center"><span class="text-xs font-bold text-[#7e0023]">300+</span><br><span class="text-[10px] text-on-surface-variant">Hazardous</span></div>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     PAGE 5: MODEL METRICS
+     ══════════════════════════════════════════ -->
+<div id="page-metrics" class="page-section p-8 space-y-8 max-w-7xl">
+    <div>
+        <span class="text-[10px] font-bold text-tertiary uppercase tracking-[0.2em] block mb-1">System Analytics</span>
+        <h2 class="text-4xl font-extrabold tracking-tight text-on-surface">Model Performance</h2>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- LSTM Card -->
+        <div class="bg-surface-container-low rounded-xl p-6 border border-outline-variant/10">
+            <h3 class="text-xs font-black uppercase tracking-widest text-primary mb-4">LSTM Neural Network</h3>
+            <div class="space-y-3">
+                <div class="flex justify-between p-3 bg-surface-container-highest/40 rounded"><span class="text-[10px] text-on-surface-variant font-bold">MAE</span><span id="metricLstmMae" class="text-sm font-bold text-primary">--</span></div>
+                <div class="flex justify-between p-3 bg-surface-container-highest/40 rounded"><span class="text-[10px] text-on-surface-variant font-bold">RMSE</span><span id="metricLstmRmse" class="text-sm font-bold text-primary">--</span></div>
+                <div class="flex justify-between p-3 bg-surface-container-highest/40 rounded"><span class="text-[10px] text-on-surface-variant font-bold">Epochs</span><span id="metricLstmEpochs" class="text-sm font-bold text-primary">--</span></div>
+                <div class="flex justify-between p-3 bg-surface-container-highest/40 rounded"><span class="text-[10px] text-on-surface-variant font-bold">Status</span><span id="metricLstmStatus" class="text-sm font-bold text-primary">--</span></div>
+            </div>
+        </div>
+        <!-- Classifier Card -->
+        <div class="bg-surface-container-low rounded-xl p-6 border border-outline-variant/10">
+            <h3 class="text-xs font-black uppercase tracking-widest text-secondary mb-4">Health Classifier</h3>
+            <div class="space-y-3">
+                <div class="flex justify-between p-3 bg-surface-container-highest/40 rounded"><span class="text-[10px] text-on-surface-variant font-bold">Model</span><span id="metricClsModel" class="text-sm font-bold text-secondary">--</span></div>
+                <div class="flex justify-between p-3 bg-surface-container-highest/40 rounded"><span class="text-[10px] text-on-surface-variant font-bold">F1 Score</span><span id="metricClsF1" class="text-sm font-bold text-secondary">--</span></div>
+                <div class="flex justify-between p-3 bg-surface-container-highest/40 rounded"><span class="text-[10px] text-on-surface-variant font-bold">Status</span><span id="metricClsStatus" class="text-sm font-bold text-secondary">--</span></div>
+            </div>
+        </div>
+        <!-- ARIMA Card -->
+        <div class="bg-surface-container-low rounded-xl p-6 border border-outline-variant/10">
+            <h3 class="text-xs font-black uppercase tracking-widest text-tertiary mb-4">ARIMA Baseline</h3>
+            <div class="space-y-3">
+                <div class="flex justify-between p-3 bg-surface-container-highest/40 rounded"><span class="text-[10px] text-on-surface-variant font-bold">MAE (Avg)</span><span id="metricArimaMae" class="text-sm font-bold text-tertiary">--</span></div>
+                <div class="flex justify-between p-3 bg-surface-container-highest/40 rounded"><span class="text-[10px] text-on-surface-variant font-bold">RMSE (Avg)</span><span id="metricArimaRmse" class="text-sm font-bold text-tertiary">--</span></div>
+                <div class="flex justify-between p-3 bg-surface-container-highest/40 rounded"><span class="text-[10px] text-on-surface-variant font-bold">Cities</span><span id="metricArimaCities" class="text-sm font-bold text-tertiary">--</span></div>
+            </div>
+        </div>
+    </div>
+
+
+</div>
+
+<!-- ══════════════════════════════════════════
+     PAGE 7: HISTORICAL TRENDS
+     ══════════════════════════════════════════ -->
+<div id="page-history" class="page-section p-8 space-y-8 max-w-7xl">
+    <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div>
+            <span class="text-[10px] font-bold text-primary uppercase tracking-[0.2em] block mb-1">Time Series Analysis</span>
+            <h2 class="text-4xl font-extrabold tracking-tight text-on-surface">Historical AQI Trends</h2>
+            <p class="text-on-surface-variant text-sm mt-2">AQI and pollutant concentration over time from the master dataset.</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <select id="historyDays" onchange="fetchHistorical()" class="bg-surface-container-high border border-outline-variant/20 text-on-surface text-sm rounded-lg px-3 py-2 focus:ring-1 focus:ring-primary">
+                <option value="30">Last 30 Days</option>
+                <option value="90" selected>Last 90 Days</option>
+                <option value="180">Last 180 Days</option>
+                <option value="365">Last 365 Days</option>
+            </select>
+        </div>
+    </div>
+    <div class="bg-surface-container-low rounded-xl p-6 border border-outline-variant/10">
+        <canvas id="historyChart" height="120"></canvas>
+    </div>
+    <div class="bg-surface-container-low rounded-xl p-6 border border-outline-variant/10">
+        <h3 class="text-xs font-black uppercase tracking-widest text-on-surface mb-4">Pollutant Breakdown</h3>
+        <canvas id="pollutantChart" height="100"></canvas>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     PAGE 8: CITY COMPARISON
+     ══════════════════════════════════════════ -->
+<div id="page-compare" class="page-section p-8 space-y-8 max-w-7xl">
+    <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div>
+            <span class="text-[10px] font-bold text-tertiary uppercase tracking-[0.2em] block mb-1">Multi-Node Analysis</span>
+            <h2 class="text-4xl font-extrabold tracking-tight text-on-surface">City Comparison</h2>
+            <p class="text-on-surface-variant text-sm mt-2">Real-time AQI comparison across Indian cities.</p>
+        </div>
+        <button onclick="fetchCityComparison()" class="px-6 py-3 primary-gradient text-on-primary font-bold text-sm rounded-lg hover:scale-105 active:scale-95 transition-all">
+            🔄 Refresh Comparison
+        </button>
+    </div>
+    <div id="compareGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="bg-surface-container-low rounded-xl p-6 animate-pulse"><div class="h-32 skeleton rounded"></div></div>
+        <div class="bg-surface-container-low rounded-xl p-6 animate-pulse"><div class="h-32 skeleton rounded"></div></div>
+        <div class="bg-surface-container-low rounded-xl p-6 animate-pulse"><div class="h-32 skeleton rounded"></div></div>
+    </div>
+    <div class="bg-surface-container-low rounded-xl p-6 border border-outline-variant/10">
+        <h3 class="text-xs font-black uppercase tracking-widest text-on-surface mb-4">AQI Comparison Chart</h3>
+        <canvas id="compareChart" height="80"></canvas>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     PAGE 9: ALERTS
+     ══════════════════════════════════════════ -->
+<div id="page-alerts" class="page-section p-8 space-y-8 max-w-7xl">
+    <div>
+        <span class="text-[10px] font-bold text-secondary uppercase tracking-[0.2em] block mb-1">Notification Center</span>
+        <h2 class="text-4xl font-extrabold tracking-tight text-on-surface">Alert Configuration</h2>
+    </div>
+    <div class="bg-surface-container-low rounded-xl p-8 border border-outline-variant/10">
+        <h3 class="text-sm font-bold text-on-surface mb-6">AQI Threshold Alert</h3>
+        <p class="text-on-surface-variant text-sm mb-4">Set a custom AQI threshold. When any fetched AQI exceeds this value, you'll see a banner alert and browser notification.</p>
+        <div class="flex items-center gap-4 mb-6">
+            <input id="alertThreshold" type="number" value="150" min="1" max="500" class="bg-surface-container-high border border-outline-variant/20 text-on-surface text-lg font-bold rounded-lg px-4 py-3 w-32 focus:ring-1 focus:ring-secondary">
+            <button onclick="saveAlertThreshold()" class="px-6 py-3 bg-secondary-container text-on-secondary-container font-bold text-sm rounded-lg hover:bg-secondary transition-colors">
+                💾 Save Threshold
+            </button>
+            <button onclick="requestNotificationPermission()" class="px-6 py-3 bg-surface-container-high text-on-surface font-bold text-sm rounded-lg hover:bg-surface-container-highest transition-colors border border-outline-variant/20">
+                🔔 Enable Browser Notifications
+            </button>
+        </div>
+        <div id="alertSaveMsg" class="text-sm mb-4"></div>
+        <div class="flex items-center gap-3">
+            <span class="text-[10px] text-on-surface-variant font-bold uppercase">Current Threshold:</span>
+            <span id="currentThreshold" class="text-lg font-black text-secondary">150</span>
+            <span class="text-[10px] text-on-surface-variant">AQI</span>
+        </div>
+    </div>
+    <div class="bg-surface-container-low rounded-xl p-8 border border-outline-variant/10">
+        <h3 class="text-sm font-bold text-on-surface mb-4">Alert History</h3>
+        <div id="alertHistory" class="space-y-2 max-h-[300px] overflow-y-auto">
+            <p class="text-on-surface-variant text-sm">No alerts triggered yet.</p>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     PAGE 10: REPORTS
+     ══════════════════════════════════════════ -->
+<div id="page-reports" class="page-section p-8 space-y-8 max-w-7xl">
+    <div>
+        <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-[0.2em] block mb-1">Data Export</span>
+        <h2 class="text-4xl font-extrabold tracking-tight text-on-surface">Reports & Export</h2>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-surface-container-low rounded-xl p-8 border border-outline-variant/10">
+            <h3 class="text-sm font-bold text-on-surface mb-4">📄 JSON Summary Report</h3>
+            <p class="text-on-surface-variant text-sm mb-6">Exports current status, AI predictions, and model metrics into a JSON file saved on the server.</p>
+            <button onclick="exportReport()" class="px-6 py-3 primary-gradient text-on-primary font-bold text-sm rounded-lg hover:scale-105 active:scale-95 transition-all">
+                Export JSON Report
+            </button>
+            <p id="reportResult" class="mt-4 text-sm text-on-surface-variant"></p>
+        </div>
+        <div class="bg-surface-container-low rounded-xl p-8 border border-outline-variant/10">
+            <h3 class="text-sm font-bold text-on-surface mb-4">📊 CSV Data Download</h3>
+            <p class="text-on-surface-variant text-sm mb-4">Download raw historical AQI data as a CSV file for analysis in Excel, Google Sheets, or Python.</p>
+            <div class="flex items-center gap-3 mb-6">
+                <select id="csvDays" class="bg-surface-container-high border border-outline-variant/20 text-on-surface text-sm rounded-lg px-3 py-2">
+                    <option value="30">Last 30 Days</option>
+                    <option value="90" selected>Last 90 Days</option>
+                    <option value="180">Last 180 Days</option>
+                    <option value="365">Last 365 Days</option>
+                </select>
+            </div>
+            <button onclick="downloadCsv()" class="px-6 py-3 bg-tertiary text-on-tertiary font-bold text-sm rounded-lg hover:scale-105 active:scale-95 transition-all">
+                ⬇️ Download CSV
+            </button>
+        </div>
+    </div>
+</div>
+
+</main>
+</div>
+
+<script src="/frontend/app.js"></script>
+</body>
+</html>

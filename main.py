@@ -1,4 +1,6 @@
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 import numpy as np
@@ -203,15 +205,21 @@ def classify_health_ml(features: dict):
 
 
 def forecast_multi_horizon(model, scaler, latest_sequence, steps):
-    """Iteratively predicts future AQI values using prior predictions as input."""
+    """Iteratively predicts future AQI with mean-reversion to prevent drift."""
     seq = latest_sequence.astype(float).copy().reshape(-1)
+    baseline_aqi = float(seq[-1])  # Current AQI as anchor
     predictions = []
 
-    for _ in range(steps):
+    for i in range(steps):
         scaled_seq = scaler.transform(seq.reshape(-1, 1))
         model_input = np.reshape(scaled_seq, (1, len(seq), 1))
         pred_scaled = model.predict(model_input, verbose=0)
-        pred = float(scaler.inverse_transform(pred_scaled)[0][0])
+        raw_pred = float(scaler.inverse_transform(pred_scaled)[0][0])
+
+        # Mean reversion: blend prediction with baseline (stronger pull for further steps)
+        reversion_weight = 0.15 * (i + 1)  # 15%, 30%, 45% pull toward baseline
+        pred = raw_pred * (1 - reversion_weight) + baseline_aqi * reversion_weight
+
         predictions.append(pred)
         seq = np.append(seq[1:], pred)
 
@@ -337,11 +345,13 @@ def run_lstm_prediction(city: str = "Delhi"):
             data_source = "CSV ONLY (satellite unreachable)"
 
         raw_aqi = np.array(last_29_days[-SEQUENCE_LENGTH:], dtype=float)
-        future_preds = forecast_multi_horizon(MODEL, SCALER, raw_aqi, steps=72)
 
-        pred_24h = float(future_preds[23])
-        pred_48h = float(future_preds[47])
-        pred_72h = float(future_preds[71])
+        # Predict 3 daily steps (not 72 hourly — the model was trained on daily data)
+        future_preds = forecast_multi_horizon(MODEL, SCALER, raw_aqi, steps=3)
+
+        pred_24h = float(future_preds[0])  # Day +1
+        pred_48h = float(future_preds[1])  # Day +2
+        pred_72h = float(future_preds[2])  # Day +3
         health_24h = classify_aqi(pred_24h)
         health_48h = classify_aqi(pred_48h)
         health_72h = classify_aqi(pred_72h)
@@ -440,3 +450,128 @@ def export_report_summary(city: str = "Delhi"):
         "file": file_path,
         "report": report,
     }
+
+
+@app.get("/api/historical")
+def get_historical(city: str = "Delhi", days: int = 90):
+    """Returns historical AQI data for trend charts."""
+    if not os.path.exists("data/master_dataset.csv"):
+        return {"error": "Dataset not found"}
+
+    try:
+        df = pd.read_csv("data/master_dataset.csv", low_memory=False)
+        df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
+        city_data = df[df['City'] == city].dropna(subset=['AQI', 'Date'])
+        city_data = city_data.sort_values('Date').tail(days)
+
+        records = []
+        for _, row in city_data.iterrows():
+            records.append({
+                "date": row['Date'].strftime('%Y-%m-%d'),
+                "aqi": float(row['AQI']),
+                "pm25": float(row.get('PM2.5', 0)) if pd.notna(row.get('PM2.5')) else None,
+                "pm10": float(row.get('PM10', 0)) if pd.notna(row.get('PM10')) else None,
+                "no2": float(row.get('NO2', 0)) if pd.notna(row.get('NO2')) else None,
+            })
+
+        return {
+            "city": city,
+            "days_requested": days,
+            "records_returned": len(records),
+            "data": records,
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.get("/api/compare")
+def compare_cities(cities: str = "Delhi,Mumbai,Bangalore"):
+    """Fetches current AQI for multiple cities for side-by-side comparison."""
+    city_list = [c.strip() for c in cities.split(",") if c.strip()]
+    results = []
+
+    for city in city_list[:5]:  # Max 5 cities
+        live = fetch_live_aqi(city)
+        if live and live.get("aqi") is not None:
+            health = classify_aqi(live["aqi"])
+            results.append({
+                "city": city,
+                "source": "LIVE SATELLITE",
+                "aqi": live["aqi"],
+                "pm25": live["pm25"],
+                "pm10": live["pm10"],
+                "no2": live["no2"],
+                "so2": live["so2"],
+                "health_risk": health,
+            })
+        else:
+            # Fallback to CSV
+            try:
+                df = pd.read_csv("data/master_dataset.csv", low_memory=False)
+                city_data = df[df['City'] == city].dropna(subset=['AQI'])
+                if not city_data.empty:
+                    latest = city_data.iloc[-1]
+                    health = classify_aqi(float(latest['AQI']))
+                    results.append({
+                        "city": city,
+                        "source": "CSV FALLBACK",
+                        "aqi": float(latest['AQI']),
+                        "pm25": float(latest.get('PM2.5', 0)),
+                        "pm10": float(latest.get('PM10', 0)),
+                        "no2": float(latest.get('NO2', 0)),
+                        "so2": float(latest.get('SO2', 0)) if 'SO2' in latest else 0,
+                        "health_risk": health,
+                    })
+            except Exception:
+                results.append({"city": city, "error": "Data unavailable"})
+
+    return {"cities": results}
+
+
+from fastapi.responses import Response as RawResponse
+import io
+
+@app.get("/api/export-csv")
+def export_csv(city: str = "Delhi", days: int = 90):
+    """Downloads a CSV file of historical AQI data for the selected city."""
+    if not os.path.exists("data/master_dataset.csv"):
+        return {"error": "Dataset not found"}
+
+    try:
+        df = pd.read_csv("data/master_dataset.csv", low_memory=False)
+        df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
+        city_data = df[df['City'] == city].dropna(subset=['AQI', 'Date'])
+        city_data = city_data.sort_values('Date').tail(days)
+
+        cols = ['Date', 'City', 'PM2.5', 'PM10', 'NO2', 'SO2', 'CO', 'O3', 'AQI']
+        available_cols = [c for c in cols if c in city_data.columns]
+        export_df = city_data[available_cols].copy()
+        export_df['Date'] = export_df['Date'].dt.strftime('%Y-%m-%d')
+
+        csv_content = export_df.to_csv(index=False)
+        filename = f"aqi_report_{city}_{days}days.csv"
+
+        return RawResponse(
+            content=csv_content,
+            media_type="text/csv",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                "Content-Type": "text/csv; charset=utf-8",
+            },
+        )
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# ──────────────────────────────────────────────
+# Serve Frontend (must be LAST)
+# ──────────────────────────────────────────────
+@app.get("/app")
+@app.get("/app/{full_path:path}")
+def serve_frontend(full_path: str = ""):
+    """Serves the Sentinel AQI dashboard at /app."""
+    return FileResponse("frontend/index.html")
+
+if os.path.isdir("frontend"):
+    app.mount("/frontend", StaticFiles(directory="frontend"), name="frontend")
+
