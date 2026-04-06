@@ -4,6 +4,10 @@ import pandas as pd
 import numpy as np
 import os
 import requests
+import joblib
+import sys
+import json
+from datetime import datetime
 
 app = FastAPI(title="AtmosIQ API", description="Hybrid LSTM-Based AQI Forecasting & Health Risk System")
 
@@ -33,6 +37,7 @@ CITY_COORDS = {
 }
 
 OPEN_METEO_URL = "https://air-quality-api.open-meteo.com/v1/air-quality"
+SEQUENCE_LENGTH = 30
 
 
 def fetch_live_aqi(city: str):
@@ -79,6 +84,140 @@ def classify_aqi(aqi_value):
         return {"level": "Hazardous", "color": "#7e0023", "advice": "Emergency conditions. Stay indoors. Keep windows sealed."}
 
 
+def load_model_artifacts():
+    model_path = "models/lstm_model.keras"
+    scaler_path = "models/scaler.joblib"
+
+    if not (os.path.exists(model_path) and os.path.exists(scaler_path)):
+        return None, None, "Model artifacts not found in models/"
+
+    try:
+        from keras import layers
+        from keras.models import load_model
+
+        # Compatibility patch for model files containing newer Keras config keys.
+        orig_dense_init = layers.Dense.__init__
+        orig_input_init = layers.InputLayer.__init__
+
+        def patched_dense_init(self, *args, **kwargs):
+            kwargs.pop("quantization_config", None)
+            return orig_dense_init(self, *args, **kwargs)
+
+        def patched_input_init(self, *args, **kwargs):
+            kwargs.pop("optional", None)
+            if "batch_shape" in kwargs and "batch_input_shape" not in kwargs:
+                kwargs["batch_input_shape"] = kwargs.pop("batch_shape")
+            return orig_input_init(self, *args, **kwargs)
+
+        layers.Dense.__init__ = patched_dense_init
+        layers.InputLayer.__init__ = patched_input_init
+
+        try:
+            model = load_model(model_path, compile=False, safe_mode=False)
+        finally:
+            layers.Dense.__init__ = orig_dense_init
+            layers.InputLayer.__init__ = orig_input_init
+
+        # Compatibility alias for artifacts serialized with NumPy internal paths.
+        if "numpy._core" not in sys.modules:
+            sys.modules["numpy._core"] = np.core
+        if "numpy._core.multiarray" not in sys.modules:
+            sys.modules["numpy._core.multiarray"] = np.core.multiarray
+
+        scaler = joblib.load(scaler_path)
+        return model, scaler, None
+    except Exception as exc:
+        return None, None, str(exc)
+
+
+MODEL = None
+SCALER = None
+MODEL_ERROR = "Not loaded yet"
+
+
+def load_health_classifier_artifact():
+    classifier_path = "models/health_classifier.joblib"
+    if not os.path.exists(classifier_path):
+        return None, "Health classifier artifact not found in models/"
+
+    try:
+        artifact = joblib.load(classifier_path)
+        if not isinstance(artifact, dict) or "model" not in artifact or "features" not in artifact:
+            return None, "Invalid classifier artifact format"
+        return artifact, None
+    except Exception as exc:
+        return None, str(exc)
+
+
+HEALTH_CLASSIFIER_ARTIFACT = None
+HEALTH_CLASSIFIER_ERROR = "Not loaded yet"
+
+
+def ensure_lstm_loaded():
+    global MODEL, SCALER, MODEL_ERROR
+    if MODEL is not None and SCALER is not None:
+        return
+    MODEL, SCALER, MODEL_ERROR = load_model_artifacts()
+
+
+def ensure_classifier_loaded():
+    global HEALTH_CLASSIFIER_ARTIFACT, HEALTH_CLASSIFIER_ERROR
+    if HEALTH_CLASSIFIER_ARTIFACT is not None:
+        return
+    HEALTH_CLASSIFIER_ARTIFACT, HEALTH_CLASSIFIER_ERROR = load_health_classifier_artifact()
+
+
+def load_json_file(file_path):
+    if not os.path.exists(file_path):
+        return None
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+
+def classify_health_ml(features: dict):
+    # Runtime classifier inference can be memory-heavy; keep it opt-in.
+    if os.getenv("ENABLE_CLASSIFIER_RUNTIME", "0") != "1":
+        return None
+
+    ensure_classifier_loaded()
+    if HEALTH_CLASSIFIER_ARTIFACT is None:
+        return None
+
+    model = HEALTH_CLASSIFIER_ARTIFACT["model"]
+    feature_cols = HEALTH_CLASSIFIER_ARTIFACT["features"]
+
+    row = {col: features.get(col, np.nan) for col in feature_cols}
+    x_input = pd.DataFrame([row])
+
+    try:
+        pred = model.predict(x_input)[0]
+        return {
+            "level": str(pred),
+            "model": str(HEALTH_CLASSIFIER_ARTIFACT.get("model_name", "unknown")),
+        }
+    except Exception:
+        return None
+
+
+def forecast_multi_horizon(model, scaler, latest_sequence, steps):
+    """Iteratively predicts future AQI values using prior predictions as input."""
+    seq = latest_sequence.astype(float).copy().reshape(-1)
+    predictions = []
+
+    for _ in range(steps):
+        scaled_seq = scaler.transform(seq.reshape(-1, 1))
+        model_input = np.reshape(scaled_seq, (1, len(seq), 1))
+        pred_scaled = model.predict(model_input, verbose=0)
+        pred = float(scaler.inverse_transform(pred_scaled)[0][0])
+        predictions.append(pred)
+        seq = np.append(seq[1:], pred)
+
+    return predictions
+
+
 # ──────────────────────────────────────────────
 # ENDPOINTS
 # ──────────────────────────────────────────────
@@ -104,6 +243,15 @@ def get_current_status(city: str = "Delhi"):
 
     if live and live.get("aqi") is not None:
         health = classify_aqi(live["aqi"])
+        ml_health = classify_health_ml(
+            {
+                "PM2.5": live.get("pm25"),
+                "PM10": live.get("pm10"),
+                "NO2": live.get("no2"),
+                "SO2": live.get("so2"),
+                "City": city,
+            }
+        )
         return {
             "source": "LIVE SATELLITE",
             "city": city,
@@ -113,6 +261,7 @@ def get_current_status(city: str = "Delhi"):
             "no2": live["no2"],
             "so2": live["so2"],
             "health_risk": health,
+            "health_risk_ml": ml_health,
         }
 
     # Fallback to CSV if satellite is unreachable
@@ -126,6 +275,17 @@ def get_current_status(city: str = "Delhi"):
             return {"error": f"No data for {city}"}
         latest = city_data.iloc[-1]
         health = classify_aqi(float(latest['AQI']))
+        ml_health = classify_health_ml(
+            {
+                "PM2.5": float(latest.get("PM2.5", np.nan)),
+                "PM10": float(latest.get("PM10", np.nan)),
+                "NO2": float(latest.get("NO2", np.nan)),
+                "SO2": float(latest.get("SO2", np.nan)),
+                "CO": float(latest.get("CO", np.nan)) if "CO" in latest else np.nan,
+                "O3": float(latest.get("O3", np.nan)) if "O3" in latest else np.nan,
+                "City": city,
+            }
+        )
         return {
             "source": "CSV FALLBACK",
             "city": city,
@@ -134,6 +294,7 @@ def get_current_status(city: str = "Delhi"):
             "pm10": float(latest.get('PM10', 0)),
             "no2": float(latest.get('NO2', 0)),
             "health_risk": health,
+            "health_risk_ml": ml_health,
         }
     except Exception as e:
         return {"error": str(e)}
@@ -143,15 +304,23 @@ def get_current_status(city: str = "Delhi"):
 def run_lstm_prediction(city: str = "Delhi"):
     """
     Hybrid Prediction: 29 days from CSV + 1 LIVE day injected as Day 30.
+    Returns 24h/48h/72h forecasts.
     """
     try:
+        ensure_lstm_loaded()
+        if MODEL is None or SCALER is None:
+            return {
+                "status": "MODEL_UNAVAILABLE",
+                "error": MODEL_ERROR or "Model artifacts not loaded.",
+            }
+
         df = pd.read_csv("data/master_dataset.csv", low_memory=False)
         city_data = df[df['City'] == city].dropna(subset=['AQI'])
 
         # Grab 29 historical days from CSV
-        last_29_days = city_data.tail(29)[['AQI']].values.tolist()
+        last_29_days = city_data.tail(SEQUENCE_LENGTH - 1)[['AQI']].values.tolist()
 
-        if len(last_29_days) < 29:
+        if len(last_29_days) < SEQUENCE_LENGTH - 1:
             return {"error": f"Not enough data for {city}."}
 
         # Inject LIVE Day 30 from satellite
@@ -161,39 +330,113 @@ def run_lstm_prediction(city: str = "Delhi"):
             data_source = "HYBRID (29 CSV + 1 LIVE)"
         else:
             # If satellite is down, use the 30th CSV row instead
-            fallback = city_data.tail(30)[['AQI']].values.tolist()
+            fallback = city_data.tail(SEQUENCE_LENGTH)[['AQI']].values.tolist()
+            if len(fallback) < SEQUENCE_LENGTH:
+                return {"error": f"Not enough fallback data for {city}."}
             last_29_days = fallback
             data_source = "CSV ONLY (satellite unreachable)"
 
-        from sklearn.preprocessing import MinMaxScaler
-        scaler = MinMaxScaler(feature_range=(0, 1))
-        raw_aqi = np.array(last_29_days[-30:])  # ensure exactly 30
-        scaled_aqi = scaler.fit_transform(raw_aqi)
-        ai_input = np.reshape(scaled_aqi, (1, 30, 1))
+        raw_aqi = np.array(last_29_days[-SEQUENCE_LENGTH:], dtype=float)
+        future_preds = forecast_multi_horizon(MODEL, SCALER, raw_aqi, steps=72)
 
-        model_path = 'models/lstm_model.keras'
+        pred_24h = float(future_preds[23])
+        pred_48h = float(future_preds[47])
+        pred_72h = float(future_preds[71])
+        health_24h = classify_aqi(pred_24h)
+        health_48h = classify_aqi(pred_48h)
+        health_72h = classify_aqi(pred_72h)
 
-        if os.path.exists(model_path):
-            from tensorflow.keras.models import load_model
-            model = load_model(model_path)
-            prediction_scaled = model.predict(ai_input)
-            predicted_aqi = scaler.inverse_transform(prediction_scaled)[0][0]
-            health = classify_aqi(float(predicted_aqi))
-
-            return {
-                "status": "LIVE",
-                "data_source": data_source,
-                "predicted_aqi_tomorrow": round(float(predicted_aqi), 2),
-                "health_risk": health,
-            }
-        else:
-            return {
-                "status": "MOCK",
-                "data_source": data_source,
-                "predicted_aqi_tomorrow": 182.4,
-                "health_risk": classify_aqi(182.4),
-                "note": "Waiting for lstm_model.keras in models/ folder.",
-            }
+        return {
+            "status": "LIVE",
+            "data_source": data_source,
+            # Backward compatibility with older clients.
+            "predicted_aqi_tomorrow": round(pred_24h, 2),
+            "health_risk": health_24h,
+            "predictions": {
+                "24h": {
+                    "aqi": round(pred_24h, 2),
+                    "health_risk": health_24h,
+                },
+                "48h": {
+                    "aqi": round(pred_48h, 2),
+                    "health_risk": health_48h,
+                },
+                "72h": {
+                    "aqi": round(pred_72h, 2),
+                    "health_risk": health_72h,
+                },
+            },
+        }
 
     except Exception as e:
         return {"error": str(e)}
+
+
+@app.get("/api/classifier-status")
+def classifier_status():
+    classifier_file_exists = os.path.exists("models/health_classifier.joblib")
+    return {
+        "loaded": HEALTH_CLASSIFIER_ARTIFACT is not None,
+        "artifact_exists": classifier_file_exists,
+        "runtime_enabled": os.getenv("ENABLE_CLASSIFIER_RUNTIME", "0") == "1",
+        "error": HEALTH_CLASSIFIER_ERROR if HEALTH_CLASSIFIER_ARTIFACT is None else None,
+    }
+
+
+@app.get("/api/model-metrics")
+def model_metrics():
+    classifier_metrics = load_json_file("models/health_classifier_metrics.json")
+    lstm_metrics = load_json_file("models/lstm_training_metrics.json")
+    arima_metrics = load_json_file("models/arima_baseline_metrics.json")
+    classifier_file_exists = os.path.exists("models/health_classifier.joblib")
+    lstm_model_exists = os.path.exists("models/lstm_model.keras") and os.path.exists("models/scaler.joblib")
+
+    return {
+        "lstm": {
+            "artifact_loaded": MODEL is not None,
+            "artifact_exists": lstm_model_exists,
+            "load_error": MODEL_ERROR if MODEL is None else None,
+            "metrics": lstm_metrics,
+        },
+        "classifier": {
+            "artifact_loaded": HEALTH_CLASSIFIER_ARTIFACT is not None,
+            "artifact_exists": classifier_file_exists,
+            "runtime_enabled": os.getenv("ENABLE_CLASSIFIER_RUNTIME", "0") == "1",
+            "load_error": HEALTH_CLASSIFIER_ERROR if HEALTH_CLASSIFIER_ARTIFACT is None else None,
+            "selected_model": HEALTH_CLASSIFIER_ARTIFACT.get("model_name") if HEALTH_CLASSIFIER_ARTIFACT else None,
+            "metrics": classifier_metrics,
+        },
+        "arima_baseline": {
+            "metrics": arima_metrics,
+            "available": arima_metrics is not None,
+        },
+    }
+
+
+@app.get("/api/report-summary")
+def report_summary(city: str = "Delhi"):
+    return {
+        "generated_at": datetime.utcnow().isoformat() + "Z",
+        "city": city,
+        "current_status": get_current_status(city),
+        "forecast": run_lstm_prediction(city),
+        "model_metrics": model_metrics(),
+    }
+
+
+@app.post("/api/report-summary/export")
+def export_report_summary(city: str = "Delhi"):
+    report = report_summary(city)
+    os.makedirs("reports", exist_ok=True)
+    stamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    file_name = f"report_summary_{city}_{stamp}.json".replace(" ", "_")
+    file_path = os.path.join("reports", file_name)
+
+    with open(file_path, "w", encoding="utf-8") as f:
+        json.dump(report, f, indent=2)
+
+    return {
+        "status": "saved",
+        "file": file_path,
+        "report": report,
+    }

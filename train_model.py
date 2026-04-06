@@ -15,11 +15,12 @@ import pandas as pd
 import numpy as np
 import os
 import joblib
+import json
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_absolute_error, mean_squared_error
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense, Dropout
-from tensorflow.keras.callbacks import EarlyStopping
+from keras.models import Sequential
+from keras.layers import LSTM, Dense, Dropout
+from keras.callbacks import EarlyStopping
 
 print("=" * 60)
 print("  🌫  AtmosIQ LSTM Training Script v2.0")
@@ -142,8 +143,24 @@ os.makedirs('models', exist_ok=True)
 model.save('models/lstm_model.keras')
 joblib.dump(scaler, 'models/scaler.joblib')
 
+metrics_payload = {
+    "sequence_length": SEQUENCE_LENGTH,
+    "records": int(len(df)),
+    "cities": int(df['City'].nunique()),
+    "train_sequences": int(len(X_train)),
+    "test_sequences": int(len(X_test)),
+    "mae": float(mae),
+    "rmse": float(rmse),
+    "best_val_loss": float(min(history.history.get('val_loss', [np.nan]))),
+    "epochs_ran": int(len(history.history.get('loss', []))),
+}
+
+with open('models/lstm_training_metrics.json', 'w', encoding='utf-8') as f:
+    json.dump(metrics_payload, f, indent=2)
+
 print(f"\n✅ SUCCESS! Files saved:")
 print(f"   📦 models/lstm_model.keras  (The trained AI brain)")
 print(f"   📦 models/scaler.joblib     (The number scaler — REQUIRED by main.py)")
+print(f"   📦 models/lstm_training_metrics.json (LSTM evaluation metrics)")
 print(f"\n🔁 Transfer the ENTIRE 'models/' folder back to your laptop.")
 print(f"   Drop it into the project root and restart FastAPI. Done!")
