@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════
-//  SENTINEL_AQI — Frontend Logic
+//  AtmosIQ — Frontend Logic
 //  Connects to FastAPI at http://127.0.0.1:8000
 // ═══════════════════════════════════════════
 
@@ -633,7 +633,7 @@ function triggerAlert(city, aqi, level) {
 
     // Browser notification
     if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification('⚠️ SENTINEL AQI Alert', {
+        new Notification('⚠️ AtmosIQ Alert', {
             body: `${city} AQI has reached ${aqi} (${level}). Take precautions.`,
             icon: '🔴',
         });

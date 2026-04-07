@@ -209,8 +209,8 @@ def load_json_file(file_path):
 
 
 def classify_health_ml(features: dict):
-    # Runtime classifier inference can be memory-heavy; keep it opt-in.
-    if os.getenv("ENABLE_CLASSIFIER_RUNTIME", "0") != "1":
+    # Runtime classifier inference can be memory-heavy; opt-out via env var.
+    if os.getenv("ENABLE_CLASSIFIER_RUNTIME", "1") != "1":
         return None
 
     ensure_classifier_loaded()
@@ -453,7 +453,7 @@ def classifier_status():
     return {
         "loaded": HEALTH_CLASSIFIER_ARTIFACT is not None,
         "artifact_exists": classifier_file_exists,
-        "runtime_enabled": os.getenv("ENABLE_CLASSIFIER_RUNTIME", "0") == "1",
+        "runtime_enabled": os.getenv("ENABLE_CLASSIFIER_RUNTIME", "1") == "1",
         "error": HEALTH_CLASSIFIER_ERROR if HEALTH_CLASSIFIER_ARTIFACT is None else None,
     }
 
@@ -476,7 +476,7 @@ def model_metrics():
         "classifier": {
             "artifact_loaded": HEALTH_CLASSIFIER_ARTIFACT is not None,
             "artifact_exists": classifier_file_exists,
-            "runtime_enabled": os.getenv("ENABLE_CLASSIFIER_RUNTIME", "0") == "1",
+            "runtime_enabled": os.getenv("ENABLE_CLASSIFIER_RUNTIME", "1") == "1",
             "load_error": HEALTH_CLASSIFIER_ERROR if HEALTH_CLASSIFIER_ARTIFACT is None else None,
             "selected_model": HEALTH_CLASSIFIER_ARTIFACT.get("model_name") if HEALTH_CLASSIFIER_ARTIFACT else None,
             "metrics": classifier_metrics,
@@ -683,7 +683,7 @@ def get_stored_predictions(city: str = None, limit: int = 20):
 @app.get("/app")
 @app.get("/app/{full_path:path}")
 def serve_frontend(full_path: str = ""):
-    """Serves the Sentinel AQI dashboard at /app."""
+    """Serves the AtmosIQ dashboard at /app."""
     return FileResponse("frontend/index.html")
 
 if os.path.isdir("frontend"):

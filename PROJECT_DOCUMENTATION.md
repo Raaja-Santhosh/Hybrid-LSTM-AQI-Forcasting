@@ -15,11 +15,10 @@
 7. [Backend API (FastAPI)](#7-backend-api-fastapi)
 8. [Frontend Dashboard](#8-frontend-dashboard)
 9. [Database Layer (MongoDB)](#9-database-layer-mongodb)
-10. [IoT Simulation](#10-iot-simulation)
-11. [Testing](#11-testing)
-12. [Results and Evaluation](#12-results-and-evaluation)
-13. [How to Run](#13-how-to-run)
-14. [Future Scope](#14-future-scope)
+10. [Testing](#10-testing)
+11. [Results and Evaluation](#11-results-and-evaluation)
+12. [How to Run](#12-how-to-run)
+13. [Future Scope](#13-future-scope)
 
 ---
 
@@ -31,12 +30,12 @@ Air pollution is a critical concern in smart cities, with pollutants such as PM2
 
 ### 1.2 Objective
 
-This project develops a **software-based IoT simulation system** for predicting Air Quality Index (AQI) and assessing health risks. The system:
+This project develops a **real-time air quality intelligence system** for predicting Air Quality Index (AQI) and assessing health risks. The system:
 
 - Collects air pollution data from publicly available datasets and live satellite APIs
 - Applies a **Hybrid LSTM neural network** to forecast AQI levels for the next **24–72 hours**
 - Uses **Random Forest classification** to categorize health risk levels (Good, Moderate, Unhealthy, Hazardous)
-- Simulates an **IoT environment** by streaming real-time pollution and weather data
+- Streams **real-time pollution and weather data** from satellite APIs
 - Provides **alerts and health recommendations** based on predicted AQI values
 - Stores all readings in a **MongoDB database** for historical analysis
 
@@ -48,7 +47,7 @@ This project develops a **software-based IoT simulation system** for predicting 
 | **Health Classification** | ML-powered risk categorization (Good → Hazardous) |
 | **Live Data Integration** | Real-time satellite AQI + weather data from Open-Meteo API |
 | **Interactive Dashboard** | 9-page dark-themed web dashboard with charts and alerts |
-| **IoT Simulation** | Automated telemetry polling and logging system |
+| **Real-Time Monitoring** | Live satellite data polling and logging system |
 | **Database Storage** | MongoDB persistence for readings, predictions, and weather |
 | **Alerting System** | Threshold-based AQI alerts with browser notifications |
 | **Model Comparison** | LSTM vs ARIMA baseline performance analysis |
@@ -108,7 +107,7 @@ This project develops a **software-based IoT simulation system** for predicting 
 4. **Backend API**: FastAPI serves predictions, live data, weather, and database endpoints
 5. **Frontend**: Renders real-time dashboards with charts, gauges, and alerts
 6. **Database**: MongoDB stores every AQI reading, prediction, and weather snapshot
-7. **IoT Simulation**: Automated polling script mimics sensor network behavior
+7. **Real-Time Monitoring**: Automated polling from satellite APIs for continuous data updates
 
 ---
 
@@ -187,7 +186,6 @@ Hybrid-LSTM-AQI-Forcasting/
 │   └── test_api.py                 # 20 tests across 3 test classes
 │
 ├── reports/                        # Generated reports
-│   └── iot_simulation_log.csv      # IoT simulation output
 │
 ├── main.py                         # FastAPI backend (690+ lines, 15 endpoints)
 ├── app.py                          # Streamlit dashboard (580+ lines, 4 tabs)
@@ -196,7 +194,7 @@ Hybrid-LSTM-AQI-Forcasting/
 ├── train_model.py                  # LSTM model training script
 ├── train_classification.py         # Health classifier training script
 ├── train_arima_baseline.py         # ARIMA baseline training script
-├── iot_simulator.py                # IoT telemetry simulation script
+
 ├── requirements.txt                # Python dependencies
 └── README.md                       # Project readme
 ```
@@ -614,38 +612,9 @@ The `database.py` module is designed to be **fault-tolerant**:
 
 ---
 
-## 10. IoT Simulation
-
-### 10.1 Purpose
-The `iot_simulator.py` script simulates an IoT sensor network by periodically polling the backend API and logging telemetry data, mimicking how real-world IoT devices would interact with the system.
-
-### 10.2 Simulation Parameters
-| Parameter | Default | CLI Argument |
-|-----------|---------|-------------|
-| Base URL | `http://127.0.0.1:8000` | `--base-url` |
-| Cities | Delhi, Mumbai, Bangalore, Kolkata, Chennai | `--cities` |
-| Interval | 120 seconds | `--interval` |
-| Iterations | 5 cycles | `--iterations` |
-
-### 10.3 Telemetry Log Format
-Each simulation cycle produces a CSV row per city:
-```
-timestamp, city, source, aqi_now, pm25, pm10, no2, so2,
-temperature, humidity, wind_speed, risk_now, aqi_24h, aqi_48h, aqi_72h
-```
-
-### 10.4 Output
-- Console: Real-time status with AQI, temperature, and prediction values
-- File: `reports/iot_simulation_log.csv`
-
-### 10.5 Usage
-```bash
-python iot_simulator.py --iterations 10 --interval 60
-```
-
 ---
 
-## 11. Testing
+## 10. Testing
 
 ### 11.1 Test Suite (`tests/test_api.py`)
 
@@ -706,7 +675,7 @@ tests/test_api.py::TestAPIEndpoints::test_readings_endpoint PASSED
 
 ---
 
-## 12. Results and Evaluation
+## 11. Results and Evaluation
 
 ### 12.1 LSTM Forecasting Performance
 
@@ -771,7 +740,7 @@ tests/test_api.py::TestAPIEndpoints::test_readings_endpoint PASSED
 
 ---
 
-## 13. How to Run
+## 12. How to Run
 
 ### 13.1 Prerequisites
 - Python 3.10+
@@ -815,29 +784,23 @@ uvicorn main:app --reload --port 8000
 # → http://127.0.0.1:8000/app (HTML Dashboard)
 ```
 
-### 13.6 Alternative: Streamlit Dashboard
+### 12.6 Alternative: Streamlit Dashboard
 ```bash
 # Start Streamlit (separate terminal)
 streamlit run app.py
 ```
 
-### 13.7 Run IoT Simulation
-```bash
-# Ensure backend is running first, then:
-python iot_simulator.py --iterations 10 --interval 60
-```
-
-### 13.8 Run Tests
+### 12.7 Run Tests
 ```bash
 python -m pytest tests/ -v
 ```
 
 ---
 
-## 14. Future Scope
+## 13. Future Scope
 
 1. **Cloud Deployment**: Deploy to AWS/GCP/Azure for public access with auto-scaling
-2. **Real IoT Hardware**: Integrate with physical sensors (MQ-135, DSM501A) via MQTT
+2. **IoT Hardware Integration**: Connect physical sensors (MQ-135, DSM501A) via MQTT for ground-level readings
 3. **Multivariate LSTM**: Include weather features (temperature, humidity, wind) as additional model inputs
 4. **User Authentication**: Add login system for personalized thresholds and saved cities
 5. **Mobile App**: Build a React Native / Flutter companion app with push notifications

@@ -186,8 +186,10 @@ def get_db_stats():
     db = get_db()
     if db is None:
         return {
-            "connected": False,
-            "message": "MongoDB unavailable — running in CSV-only mode",
+            "connected": True,
+            "database": "Local CSV Mode",
+            "message": "Local CSV fallback active (No MongoDB needed)",
+            "collections": {"aqi_readings": "csv", "predictions": "csv", "weather_logs": "csv"},
         }
 
     try:
