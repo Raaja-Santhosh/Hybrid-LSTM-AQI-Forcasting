@@ -50,9 +50,13 @@ async function init() {
 
         setConnectionStatus(true);
         fetchCurrentStatus();
+        checkDbStatus();
 
         // Auto-refresh every 60s
-        autoRefreshTimer = setInterval(() => fetchCurrentStatus(), 60000);
+        autoRefreshTimer = setInterval(() => {
+            fetchCurrentStatus();
+            checkDbStatus();
+        }, 60000);
     } catch (e) {
         setConnectionStatus(false);
         console.error("Init failed:", e);
@@ -70,6 +74,26 @@ function setConnectionStatus(online) {
         dot.className = "w-2 h-2 rounded-full bg-secondary";
         label.textContent = "API OFFLINE";
         label.className = "text-[10px] font-bold text-secondary/80 uppercase tracking-widest";
+    }
+}
+
+async function checkDbStatus() {
+    try {
+        const res = await fetch(`${API_BASE}/api/db-status`);
+        const data = await res.json();
+        const dot = document.getElementById("dbDot");
+        const label = document.getElementById("dbLabel");
+        if (data.connected) {
+            dot.className = "w-2 h-2 rounded-full bg-primary animate-pulse-glow";
+            label.textContent = "MongoDB Connected";
+            label.className = "text-[10px] font-bold text-primary/80 uppercase tracking-widest";
+        } else {
+            dot.className = "w-2 h-2 rounded-full bg-secondary";
+            label.textContent = "DB: CSV Mode";
+            label.className = "text-[10px] font-bold text-secondary/80 uppercase tracking-widest";
+        }
+    } catch (e) {
+        // Silently fail — DB status is non-critical
     }
 }
 
@@ -122,6 +146,8 @@ async function fetchCurrentStatus() {
         const pm10 = data.pm10 || 0;
         const no2 = data.no2 || 0;
         const so2 = data.so2 || 0;
+        const co = data.co || 0;
+        const o3 = data.o3 || 0;
         const health = data.health_risk || {};
         const cls = classifyAqi(aqi);
 
@@ -185,12 +211,22 @@ async function fetchCurrentStatus() {
         document.getElementById("liveNo2Bar").style.width = Math.min(no2 / 200 * 100, 100) + "%";
         document.getElementById("liveSo2Bar").style.width = Math.min(so2 / 200 * 100, 100) + "%";
 
+        // CO & O3 rendering
+        document.getElementById("liveCo").textContent = co > 0 ? co.toFixed(1) : "--";
+        document.getElementById("liveO3").textContent = o3 > 0 ? o3.toFixed(1) : "--";
+        document.getElementById("liveCoTag").textContent = co > 0 ? pollutantStatus(co, 4000, 10000) : "--";
+        document.getElementById("liveO3Tag").textContent = o3 > 0 ? pollutantStatus(o3, 100, 180) : "--";
+        document.getElementById("liveCoBar").style.width = Math.min(co / 20000 * 100, 100) + "%";
+        document.getElementById("liveO3Bar").style.width = Math.min(o3 / 300 * 100, 100) + "%";
+
         // Color bars based on level
         const barColor = (val, low, high) => val > high ? "bg-secondary" : val > low ? "bg-[#ffff00]" : "bg-primary";
         document.getElementById("livePm25Bar").className = `${barColor(pm25, 25, 60)} h-full transition-all duration-500`;
         document.getElementById("livePm10Bar").className = `${barColor(pm10, 50, 100)} h-full transition-all duration-500`;
         document.getElementById("liveNo2Bar").className = `${barColor(no2, 40, 80)} h-full transition-all duration-500`;
         document.getElementById("liveSo2Bar").className = `${barColor(so2, 20, 80)} h-full transition-all duration-500`;
+        document.getElementById("liveCoBar").className = `${barColor(co, 4000, 10000)} h-full transition-all duration-500`;
+        document.getElementById("liveO3Bar").className = `${barColor(o3, 100, 180)} h-full transition-all duration-500`;
 
         // ── Health Risk Page ──
         document.getElementById("healthLevel").textContent = health.level || cls.level;
@@ -199,8 +235,24 @@ async function fetchCurrentStatus() {
         document.getElementById("healthMainCard").style.borderColor = health.color || cls.color;
         populatePrecautions(aqi);
 
+        // ── Weather Data ──
+        const weather = data.weather || {};
+        const temp = weather.temperature;
+        const humidity = weather.humidity;
+        const windSpeed = weather.wind_speed;
+
+        // Dashboard weather cards
+        document.getElementById("dashTemp").textContent = temp != null ? temp.toFixed(1) : "--";
+        document.getElementById("dashHumidity").textContent = humidity != null ? Math.round(humidity) : "--";
+        document.getElementById("dashWind").textContent = windSpeed != null ? windSpeed.toFixed(1) : "--";
+
+        // Live monitor weather cards
+        document.getElementById("liveTemp").textContent = temp != null ? temp.toFixed(1) : "--";
+        document.getElementById("liveHumidity").textContent = humidity != null ? Math.round(humidity) : "--";
+        document.getElementById("liveWind").textContent = windSpeed != null ? windSpeed.toFixed(1) : "--";
+
         // ── Process Log ──
-        addLogEntry("OK", `GET /api/current-status → AQI:${Math.round(aqi)} PM2.5:${pm25.toFixed(1)} SRC:${data.source}`);
+        addLogEntry("OK", `GET /api/current-status → AQI:${Math.round(aqi)} PM2.5:${pm25.toFixed(1)} Temp:${temp != null ? temp.toFixed(1) + '°C' : 'N/A'} SRC:${data.source}`);
 
         setConnectionStatus(true);
     } catch (e) {

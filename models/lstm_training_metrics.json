@@ -1,0 +1,17 @@
+{
+  "sequence_length": 30,
+  "records": 191396,
+  "cities": 243,
+  "train_sequences": 152576,
+  "test_sequences": 38144,
+  "mae": 22.47,
+  "rmse": 31.85,
+  "best_val_loss": 0.0018,
+  "epochs_ran": 23,
+  "model_architecture": "LSTM(64) → Dropout(0.2) → LSTM(64) → Dropout(0.2) → LSTM(32) → Dropout(0.2) → Dense(16,relu) → Dense(1)",
+  "optimizer": "adam",
+  "loss_function": "mean_squared_error",
+  "batch_size": 64,
+  "early_stopping_patience": 5,
+  "validation_split": 0.1
+}

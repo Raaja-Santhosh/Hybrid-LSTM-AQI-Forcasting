@@ -137,6 +137,10 @@
             <span id="connDot" class="w-2 h-2 rounded-full bg-primary animate-pulse-glow"></span>
             <span id="connLabel" class="text-[10px] font-bold text-primary/80 uppercase tracking-widest">Connecting...</span>
         </div>
+        <div class="flex items-center gap-2 px-4 mt-2">
+            <span id="dbDot" class="w-2 h-2 rounded-full bg-on-surface-variant"></span>
+            <span id="dbLabel" class="text-[10px] font-bold text-on-surface-variant/80 uppercase tracking-widest">DB: Checking...</span>
+        </div>
     </div>
 </aside>
 
@@ -276,6 +280,37 @@
             </div>
         </div>
     </div>
+
+    <!-- Weather Strip -->
+    <div class="grid grid-cols-12 gap-6 mt-2">
+        <div class="col-span-4 bg-surface-container-high p-5 rounded-lg flex justify-between items-center hover:bg-surface-container-highest transition-colors border-l-2 border-tertiary/40">
+            <div>
+                <p class="text-[10px] text-on-surface-variant font-bold tracking-widest mb-1">TEMPERATURE</p>
+                <h4 class="text-2xl font-bold text-on-surface"><span id="dashTemp">--</span> <span class="text-sm font-normal text-on-surface-variant">°C</span></h4>
+            </div>
+            <div class="w-12 h-12 rounded-lg bg-tertiary/10 flex items-center justify-center text-tertiary">
+                <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">thermostat</span>
+            </div>
+        </div>
+        <div class="col-span-4 bg-surface-container-high p-5 rounded-lg flex justify-between items-center hover:bg-surface-container-highest transition-colors border-l-2 border-tertiary/40">
+            <div>
+                <p class="text-[10px] text-on-surface-variant font-bold tracking-widest mb-1">HUMIDITY</p>
+                <h4 class="text-2xl font-bold text-on-surface"><span id="dashHumidity">--</span> <span class="text-sm font-normal text-on-surface-variant">%</span></h4>
+            </div>
+            <div class="w-12 h-12 rounded-lg bg-tertiary/10 flex items-center justify-center text-tertiary">
+                <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">humidity_percentage</span>
+            </div>
+        </div>
+        <div class="col-span-4 bg-surface-container-high p-5 rounded-lg flex justify-between items-center hover:bg-surface-container-highest transition-colors border-l-2 border-tertiary/40">
+            <div>
+                <p class="text-[10px] text-on-surface-variant font-bold tracking-widest mb-1">WIND SPEED</p>
+                <h4 class="text-2xl font-bold text-on-surface"><span id="dashWind">--</span> <span class="text-sm font-normal text-on-surface-variant">km/h</span></h4>
+            </div>
+            <div class="w-12 h-12 rounded-lg bg-tertiary/10 flex items-center justify-center text-tertiary">
+                <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">air</span>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- ══════════════════════════════════════════
@@ -348,6 +383,34 @@
             </div>
         </div>
 
+        <!-- CO & O3 Row -->
+        <div class="col-span-6 bg-surface-container-low rounded-xl p-6 border-l-2 border-secondary/40">
+            <div class="flex justify-between items-start mb-6">
+                <span class="text-xs font-bold text-on-surface-variant uppercase">CO Level</span>
+                <span id="liveCoTag" class="px-2 py-0.5 rounded bg-secondary/10 text-secondary text-[10px] font-bold">--</span>
+            </div>
+            <div class="flex items-baseline gap-2 mb-2">
+                <span id="liveCo" class="text-5xl font-black tracking-tighter">--</span>
+                <span class="text-on-surface-variant text-sm font-medium">µg/m³</span>
+            </div>
+            <div class="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden mt-4">
+                <div id="liveCoBar" class="bg-secondary h-full w-[0%] transition-all duration-500" style="box-shadow: 0 0 8px #ff716a;"></div>
+            </div>
+        </div>
+        <div class="col-span-6 bg-surface-container-low rounded-xl p-6 border-l-2 border-tertiary/40">
+            <div class="flex justify-between items-start mb-6">
+                <span class="text-xs font-bold text-on-surface-variant uppercase">Ozone (O3)</span>
+                <span id="liveO3Tag" class="px-2 py-0.5 rounded bg-tertiary/10 text-tertiary text-[10px] font-bold">--</span>
+            </div>
+            <div class="flex items-baseline gap-2 mb-2">
+                <span id="liveO3" class="text-5xl font-black tracking-tighter">--</span>
+                <span class="text-on-surface-variant text-sm font-medium">µg/m³</span>
+            </div>
+            <div class="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden mt-4">
+                <div id="liveO3Bar" class="bg-tertiary h-full w-[0%] transition-all duration-500" style="box-shadow: 0 0 8px #64b5f6;"></div>
+            </div>
+        </div>
+
         <!-- Process Log -->
         <div class="col-span-12 bg-surface-container-low rounded-xl p-6 border border-outline-variant/10">
             <div class="flex items-center gap-2 mb-6">
@@ -356,6 +419,40 @@
             </div>
             <div id="processLog" class="space-y-2 font-mono text-[11px] max-h-[200px] overflow-y-auto pr-2">
                 <div class="flex gap-4 p-2 opacity-60"><span class="text-primary/60">--:--:--</span><span class="text-on-surface-variant">Waiting for first data fetch...</span></div>
+            </div>
+        </div>
+
+        <!-- Weather Strip in Live Monitor -->
+        <div class="col-span-12 grid grid-cols-3 gap-6">
+            <div class="bg-surface-container-low rounded-xl p-6 border-l-2 border-tertiary/40">
+                <div class="flex justify-between items-start mb-4">
+                    <span class="text-xs font-bold text-on-surface-variant uppercase">Temperature</span>
+                    <span class="material-symbols-outlined text-tertiary text-lg" style="font-variation-settings: 'FILL' 1;">thermostat</span>
+                </div>
+                <div class="flex items-baseline gap-2">
+                    <span id="liveTemp" class="text-4xl font-black tracking-tighter text-tertiary">--</span>
+                    <span class="text-on-surface-variant text-sm font-medium">°C</span>
+                </div>
+            </div>
+            <div class="bg-surface-container-low rounded-xl p-6 border-l-2 border-tertiary/40">
+                <div class="flex justify-between items-start mb-4">
+                    <span class="text-xs font-bold text-on-surface-variant uppercase">Humidity</span>
+                    <span class="material-symbols-outlined text-tertiary text-lg" style="font-variation-settings: 'FILL' 1;">humidity_percentage</span>
+                </div>
+                <div class="flex items-baseline gap-2">
+                    <span id="liveHumidity" class="text-4xl font-black tracking-tighter text-tertiary">--</span>
+                    <span class="text-on-surface-variant text-sm font-medium">%</span>
+                </div>
+            </div>
+            <div class="bg-surface-container-low rounded-xl p-6 border-l-2 border-tertiary/40">
+                <div class="flex justify-between items-start mb-4">
+                    <span class="text-xs font-bold text-on-surface-variant uppercase">Wind Speed</span>
+                    <span class="material-symbols-outlined text-tertiary text-lg" style="font-variation-settings: 'FILL' 1;">air</span>
+                </div>
+                <div class="flex items-baseline gap-2">
+                    <span id="liveWind" class="text-4xl font-black tracking-tighter text-tertiary">--</span>
+                    <span class="text-on-surface-variant text-sm font-medium">km/h</span>
+                </div>
             </div>
         </div>
     </div>

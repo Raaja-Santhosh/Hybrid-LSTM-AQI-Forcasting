@@ -37,8 +37,9 @@ print("4. Calculating AI proxy AQI for historical 1990-2015 records...")
 # based primarily on PM10 and NO2 spikes.
 df_hist['AQI'] = df_hist[['PM10', 'NO2']].max(axis=1) * 1.5 
 
-# Keep only the columns that both datasets share so we can stack them perfectly
-common_cols = ['City', 'Date', 'PM2.5', 'PM10', 'NO2', 'SO2', 'AQI']
+# Keep all useful columns — CO and O3 only exist in the modern dataset
+# but we carry them through so the ML pipeline and dashboards can use them.
+common_cols = ['City', 'Date', 'PM2.5', 'PM10', 'NO2', 'SO2', 'CO', 'O3', 'AQI', 'AQI_Bucket']
 df_hist = df_hist[[col for col in common_cols if col in df_hist.columns]]
 df_mod = df_mod[[col for col in common_cols if col in df_mod.columns]]
 

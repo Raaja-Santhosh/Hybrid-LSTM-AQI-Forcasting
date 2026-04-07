@@ -11,6 +11,8 @@ import sys
 import json
 from datetime import datetime
 
+import database as db
+
 app = FastAPI(title="AtmosIQ API", description="Hybrid LSTM-Based AQI Forecasting & Health Risk System")
 
 # CORS - allows the React frontend to call this server
@@ -38,7 +40,8 @@ CITY_COORDS = {
     "Jaipur":    {"lat": 26.9124, "lon": 75.7873},
 }
 
-OPEN_METEO_URL = "https://air-quality-api.open-meteo.com/v1/air-quality"
+OPEN_METEO_AQI_URL = "https://air-quality-api.open-meteo.com/v1/air-quality"
+OPEN_METEO_WEATHER_URL = "https://api.open-meteo.com/v1/forecast"
 SEQUENCE_LENGTH = 30
 
 
@@ -52,16 +55,42 @@ def fetch_live_aqi(city: str):
         params = {
             "latitude": coords["lat"],
             "longitude": coords["lon"],
-            "current": "pm10,pm2_5,nitrogen_dioxide,sulphur_dioxide,us_aqi",
+            "current": "pm10,pm2_5,nitrogen_dioxide,sulphur_dioxide,carbon_monoxide,ozone,us_aqi",
         }
-        r = requests.get(OPEN_METEO_URL, params=params, timeout=5)
+        r = requests.get(OPEN_METEO_AQI_URL, params=params, timeout=5)
         data = r.json().get("current", {})
         return {
             "pm25": data.get("pm2_5"),
             "pm10": data.get("pm10"),
             "no2": data.get("nitrogen_dioxide"),
             "so2": data.get("sulphur_dioxide"),
+            "co": data.get("carbon_monoxide"),
+            "o3": data.get("ozone"),
             "aqi": data.get("us_aqi"),
+        }
+    except Exception:
+        return None
+
+
+def fetch_live_weather(city: str):
+    """Fetches LIVE weather data (temperature, humidity, wind speed) from Open-Meteo."""
+    coords = CITY_COORDS.get(city)
+    if not coords:
+        return None
+
+    try:
+        params = {
+            "latitude": coords["lat"],
+            "longitude": coords["lon"],
+            "current": "temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code",
+        }
+        r = requests.get(OPEN_METEO_WEATHER_URL, params=params, timeout=5)
+        data = r.json().get("current", {})
+        return {
+            "temperature": data.get("temperature_2m"),
+            "humidity": data.get("relative_humidity_2m"),
+            "wind_speed": data.get("wind_speed_10m"),
+            "weather_code": data.get("weather_code"),
         }
     except Exception:
         return None
@@ -245,8 +274,18 @@ def get_current_status(city: str = "Delhi"):
     """
     Called by the Dashboard screen.
     PRIORITY: Live satellite data first. Falls back to CSV if satellite is down.
+    Now includes weather data and stores readings in MongoDB.
     """
-    # Try live data first
+    # Fetch weather in parallel with AQI
+    weather = fetch_live_weather(city)
+    weather_data = {
+        "temperature": weather.get("temperature") if weather else None,
+        "humidity": weather.get("humidity") if weather else None,
+        "wind_speed": weather.get("wind_speed") if weather else None,
+        "weather_code": weather.get("weather_code") if weather else None,
+    }
+
+    # Try live AQI data first
     live = fetch_live_aqi(city)
 
     if live and live.get("aqi") is not None:
@@ -260,6 +299,20 @@ def get_current_status(city: str = "Delhi"):
                 "City": city,
             }
         )
+
+        # Store reading in MongoDB
+        db.store_reading(
+            city=city, source="LIVE SATELLITE", aqi=live["aqi"],
+            pm25=live.get("pm25"), pm10=live.get("pm10"),
+            no2=live.get("no2"), so2=live.get("so2"),
+            temperature=weather_data["temperature"],
+            humidity=weather_data["humidity"],
+            wind_speed=weather_data["wind_speed"],
+        )
+        if weather:
+            db.store_weather(city, weather_data["temperature"],
+                            weather_data["humidity"], weather_data["wind_speed"])
+
         return {
             "source": "LIVE SATELLITE",
             "city": city,
@@ -268,8 +321,11 @@ def get_current_status(city: str = "Delhi"):
             "pm10": live["pm10"],
             "no2": live["no2"],
             "so2": live["so2"],
+            "co": live.get("co"),
+            "o3": live.get("o3"),
             "health_risk": health,
             "health_risk_ml": ml_health,
+            "weather": weather_data,
         }
 
     # Fallback to CSV if satellite is unreachable
@@ -303,6 +359,7 @@ def get_current_status(city: str = "Delhi"):
             "no2": float(latest.get('NO2', 0)),
             "health_risk": health,
             "health_risk_ml": ml_health,
+            "weather": weather_data,
         }
     except Exception as e:
         return {"error": str(e)}
@@ -355,6 +412,14 @@ def run_lstm_prediction(city: str = "Delhi"):
         health_24h = classify_aqi(pred_24h)
         health_48h = classify_aqi(pred_48h)
         health_72h = classify_aqi(pred_72h)
+
+        # Store prediction in MongoDB
+        db.store_prediction(
+            city=city, data_source=data_source,
+            pred_24h=round(pred_24h, 2),
+            pred_48h=round(pred_48h, 2),
+            pred_72h=round(pred_72h, 2),
+        )
 
         return {
             "status": "LIVE",
@@ -561,6 +626,55 @@ def export_csv(city: str = "Delhi", days: int = 90):
         )
     except Exception as e:
         return {"error": str(e)}
+
+
+# ──────────────────────────────────────────────
+# Weather & Database Endpoints
+# ──────────────────────────────────────────────
+@app.get("/api/weather")
+def get_weather(city: str = "Delhi"):
+    """Returns current weather conditions for the selected city."""
+    weather = fetch_live_weather(city)
+    if weather is None:
+        return {"error": f"Weather data unavailable for {city}"}
+
+    db.store_weather(city, weather.get("temperature"),
+                     weather.get("humidity"), weather.get("wind_speed"))
+
+    return {
+        "city": city,
+        "temperature": weather.get("temperature"),
+        "humidity": weather.get("humidity"),
+        "wind_speed": weather.get("wind_speed"),
+        "weather_code": weather.get("weather_code"),
+    }
+
+
+@app.get("/api/db-status")
+def db_status():
+    """Returns MongoDB connection status and collection counts."""
+    return db.get_db_stats()
+
+
+@app.get("/api/readings")
+def get_stored_readings(city: str = None, limit: int = 50):
+    """Returns stored AQI readings from MongoDB."""
+    readings = db.get_readings(city=city, limit=limit)
+    # Convert datetime objects for JSON serialization
+    for r in readings:
+        if "timestamp" in r and hasattr(r["timestamp"], "isoformat"):
+            r["timestamp"] = r["timestamp"].isoformat()
+    return {"readings": readings, "count": len(readings)}
+
+
+@app.get("/api/stored-predictions")
+def get_stored_predictions(city: str = None, limit: int = 20):
+    """Returns stored LSTM predictions from MongoDB."""
+    preds = db.get_predictions(city=city, limit=limit)
+    for p in preds:
+        if "timestamp" in p and hasattr(p["timestamp"], "isoformat"):
+            p["timestamp"] = p["timestamp"].isoformat()
+    return {"predictions": preds, "count": len(preds)}
 
 
 # ──────────────────────────────────────────────

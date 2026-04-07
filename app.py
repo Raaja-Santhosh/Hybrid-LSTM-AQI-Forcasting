@@ -246,7 +246,7 @@ else:
     st.sidebar.error("Error: `data/city_day.csv` not found!")
 
 # --- MAIN DASHBOARD ---
-tab1, tab2, tab3 = st.tabs(["📊 Current Data", "🔮 Prediction (AI)", "📈 Historical Trends"])
+tab1, tab2, tab3, tab4 = st.tabs(["📊 Current Data", "🔮 Prediction (AI)", "📈 Historical Trends", "🌡️ Weather & IoT"])
 
 api_current, api_current_error = (None, None)
 api_predict, api_predict_error = (None, None)
@@ -256,6 +256,13 @@ if df is not None and use_backend_api:
     api_current, api_current_error = fetch_api_json(api_base_url, "/api/current-status", params={"city": selected_city})
     api_predict, api_predict_error = fetch_api_json(api_base_url, "/api/predict", method="post", params={"city": selected_city})
     api_metrics, api_metrics_error = fetch_api_json(api_base_url, "/api/model-metrics")
+
+# Fetch weather & DB status from backend
+api_weather, api_weather_error = (None, None)
+api_db_status, api_db_error = (None, None)
+if df is not None and use_backend_api:
+    api_weather, api_weather_error = fetch_api_json(api_base_url, "/api/weather", params={"city": selected_city})
+    api_db_status, api_db_error = fetch_api_json(api_base_url, "/api/db-status")
 
 with st.sidebar:
     st.markdown("---")
@@ -275,6 +282,18 @@ with st.sidebar:
         else:
             st.info("Enable 'Use Backend API' to export report summary.")
 
+    st.markdown("---")
+    st.subheader("System Status")
+    if api_db_status and isinstance(api_db_status, dict):
+        if api_db_status.get("connected"):
+            st.success("🟢 MongoDB Connected")
+            cols = api_db_status.get("collections", {})
+            st.caption(f"Readings: {cols.get('aqi_readings', 0)} | Predictions: {cols.get('predictions', 0)} | Weather: {cols.get('weather_logs', 0)}")
+        else:
+            st.warning("🟡 MongoDB Offline — CSV Mode")
+    elif api_db_error:
+        st.caption(f"DB status unavailable: {api_db_error}")
+
 with tab1:
     st.header(f"Current AQI Overview: {selected_city if df is not None else 'N/A'}")
     if use_backend_api and api_current is not None and "error" not in api_current:
@@ -284,6 +303,24 @@ with tab1:
         col3.metric("NO2", api_current.get("no2", "N/A"))
         risk_level = api_current.get("health_risk", {}).get("level", "Unknown")
         col4.metric("Risk Level", risk_level)
+
+        # CO and O3 row
+        co_val = api_current.get("co")
+        o3_val = api_current.get("o3")
+        so2_val = api_current.get("so2")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("SO2", f"{so2_val:.1f} µg/m³" if so2_val else "N/A")
+        c2.metric("CO", f"{co_val:.1f} µg/m³" if co_val else "N/A")
+        c3.metric("O3", f"{o3_val:.1f} µg/m³" if o3_val else "N/A")
+
+        # Weather data row
+        weather = api_current.get("weather", {})
+        if weather and any(weather.get(k) is not None for k in ["temperature", "humidity", "wind_speed"]):
+            st.subheader("🌡️ Weather Conditions")
+            w1, w2, w3 = st.columns(3)
+            w1.metric("Temperature", f"{weather['temperature']:.1f} °C" if weather.get('temperature') is not None else "N/A")
+            w2.metric("Humidity", f"{weather['humidity']:.0f} %" if weather.get('humidity') is not None else "N/A")
+            w3.metric("Wind Speed", f"{weather['wind_speed']:.1f} km/h" if weather.get('wind_speed') is not None else "N/A")
 
         ml_risk = api_current.get("health_risk_ml", {})
         if isinstance(ml_risk, dict) and ml_risk.get("level"):
@@ -499,3 +536,51 @@ if arima_source is not None:
 else:
     err_msg = arima_metrics_error or "ARIMA baseline metrics not available yet."
     st.caption(err_msg)
+
+# ─── TAB 4: WEATHER & IoT ───
+with tab4:
+    st.header(f"🌡️ Weather & IoT Telemetry: {selected_city if df is not None else 'N/A'}")
+
+    if use_backend_api and api_weather and "error" not in api_weather:
+        st.subheader("Current Weather Conditions")
+        w1, w2, w3 = st.columns(3)
+        temp = api_weather.get("temperature")
+        hum = api_weather.get("humidity")
+        wind = api_weather.get("wind_speed")
+        w1.metric("🌡️ Temperature", f"{temp:.1f} °C" if temp is not None else "N/A")
+        w2.metric("💧 Humidity", f"{hum:.0f} %" if hum is not None else "N/A")
+        w3.metric("💨 Wind Speed", f"{wind:.1f} km/h" if wind is not None else "N/A")
+    elif api_weather_error:
+        st.warning(f"Weather data unavailable: {api_weather_error}")
+    else:
+        st.info("Enable 'Use Backend API' to see live weather data.")
+
+    st.markdown("---")
+    st.subheader("📡 MongoDB Database Status")
+    if api_db_status and isinstance(api_db_status, dict) and api_db_status.get("connected"):
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("Status", "🟢 Connected")
+        cols = api_db_status.get("collections", {})
+        col2.metric("AQI Readings", cols.get("aqi_readings", 0))
+        col3.metric("Predictions", cols.get("predictions", 0))
+        col4.metric("Weather Logs", cols.get("weather_logs", 0))
+
+        st.subheader("📋 Recent Stored Readings")
+        readings_data, readings_err = fetch_api_json(api_base_url, "/api/readings", params={"city": selected_city, "limit": 10})
+        if readings_data and "readings" in readings_data and len(readings_data["readings"]) > 0:
+            readings_df = pd.DataFrame(readings_data["readings"])
+            st.dataframe(readings_df, use_container_width=True)
+        else:
+            st.caption("No stored readings yet. Data is saved automatically each time the dashboard fetches AQI data.")
+
+        st.subheader("🔮 Recent Stored Predictions")
+        preds_data, preds_err = fetch_api_json(api_base_url, "/api/stored-predictions", params={"city": selected_city, "limit": 10})
+        if preds_data and "predictions" in preds_data and len(preds_data["predictions"]) > 0:
+            preds_df = pd.DataFrame(preds_data["predictions"])
+            st.dataframe(preds_df, use_container_width=True)
+        else:
+            st.caption("No stored predictions yet. Run a forecast in the 'Prediction (AI)' tab to see them here.")
+    elif api_db_status:
+        st.warning("MongoDB is offline. The system is running in CSV-only mode.")
+    else:
+        st.info("Enable 'Use Backend API' to see database status.")

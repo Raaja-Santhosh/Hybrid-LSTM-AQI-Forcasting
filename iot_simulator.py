@@ -42,6 +42,9 @@ def run_simulation(base_url, cities, interval_seconds, iterations):
             p48 = pred.get("predictions", {}).get("48h", {}).get("aqi")
             p72 = pred.get("predictions", {}).get("72h", {}).get("aqi")
 
+            # Extract weather telemetry
+            weather = current.get("weather", {}) or {}
+
             row = {
                 "timestamp": now,
                 "city": city,
@@ -51,13 +54,17 @@ def run_simulation(base_url, cities, interval_seconds, iterations):
                 "pm10": current.get("pm10"),
                 "no2": current.get("no2"),
                 "so2": current.get("so2"),
+                "temperature": weather.get("temperature"),
+                "humidity": weather.get("humidity"),
+                "wind_speed": weather.get("wind_speed"),
                 "risk_now": (current.get("health_risk") or {}).get("level"),
                 "aqi_24h": p24,
                 "aqi_48h": p48,
                 "aqi_72h": p72,
             }
             rows.append(row)
-            print(f"  {city}: AQI now={row['aqi_now']} | +24h={row['aqi_24h']} | risk={row['risk_now']}")
+            temp_str = f"{weather.get('temperature', 'N/A')}°C" if weather.get("temperature") else "N/A"
+            print(f"  {city}: AQI now={row['aqi_now']} | Temp={temp_str} | +24h={row['aqi_24h']} | risk={row['risk_now']}")
 
         if i < iterations - 1:
             time.sleep(interval_seconds)
