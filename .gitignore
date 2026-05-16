@@ -1,9 +1,0 @@
-archive.zip
-__pycache__/
-*.h5
-.env
-.venv/
-env/
-venv/
-.ipynb_checkpoints/
-frontend/

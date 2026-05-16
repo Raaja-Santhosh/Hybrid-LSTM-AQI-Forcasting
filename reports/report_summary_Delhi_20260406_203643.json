@@ -1,0 +1,245 @@
+{
+  "generated_at": "2026-04-06T20:36:16.693027Z",
+  "city": "Delhi",
+  "current_status": {
+    "source": "LIVE SATELLITE",
+    "city": "Delhi",
+    "aqi": 162,
+    "pm25": 41.4,
+    "pm10": 136.4,
+    "no2": 34.4,
+    "so2": 22.1,
+    "health_risk": {
+      "level": "Unhealthy",
+      "color": "#ff0000",
+      "advice": "Everyone may experience health effects. Wear N95 mask outdoors."
+    },
+    "health_risk_ml": null
+  },
+  "forecast": {
+    "status": "LIVE",
+    "data_source": "HYBRID (29 CSV + 1 LIVE)",
+    "predicted_aqi_tomorrow": 176.56,
+    "health_risk": {
+      "level": "Unhealthy",
+      "color": "#ff0000",
+      "advice": "Everyone may experience health effects. Wear N95 mask outdoors."
+    },
+    "predictions": {
+      "24h": {
+        "aqi": 176.56,
+        "health_risk": {
+          "level": "Unhealthy",
+          "color": "#ff0000",
+          "advice": "Everyone may experience health effects. Wear N95 mask outdoors."
+        }
+      },
+      "48h": {
+        "aqi": 213.26,
+        "health_risk": {
+          "level": "Very Unhealthy",
+          "color": "#8f3f97",
+          "advice": "Health alert: significant risk. Avoid all outdoor exertion."
+        }
+      },
+      "72h": {
+        "aqi": 250.29,
+        "health_risk": {
+          "level": "Very Unhealthy",
+          "color": "#8f3f97",
+          "advice": "Health alert: significant risk. Avoid all outdoor exertion."
+        }
+      }
+    }
+  },
+  "model_metrics": {
+    "lstm": {
+      "artifact_loaded": true,
+      "artifact_exists": true,
+      "load_error": null,
+      "metrics": null
+    },
+    "classifier": {
+      "artifact_loaded": false,
+      "artifact_exists": true,
+      "runtime_enabled": false,
+      "load_error": "Not loaded yet",
+      "selected_model": null,
+      "metrics": {
+        "selected_model": "random_forest",
+        "selected_model_f1_weighted": 0.9757236554476271,
+        "all_metrics": {
+          "random_forest": {
+            "accuracy": 0.9757093454439398,
+            "f1_weighted": 0.9757236554476271,
+            "classification_report": {
+              "Good": {
+                "precision": 0.9614243323442137,
+                "recall": 0.9632107023411371,
+                "f1-score": 0.9623166883237424,
+                "support": 2691.0
+              },
+              "Hazardous": {
+                "precision": 0.9896324222431668,
+                "recall": 0.9814612868047983,
+                "f1-score": 0.9855299178725069,
+                "support": 6419.0
+              },
+              "Moderate": {
+                "precision": 0.970583481493454,
+                "recall": 0.9746794351566305,
+                "f1-score": 0.9726271460965339,
+                "support": 6161.0
+              },
+              "Unhealthy": {
+                "precision": 0.9736060329067642,
+                "recall": 0.9760595647193585,
+                "f1-score": 0.9748312550051481,
+                "support": 8730.0
+              },
+              "accuracy": 0.9757093454439398,
+              "macro avg": {
+                "precision": 0.9738115672468997,
+                "recall": 0.9738527472554811,
+                "f1-score": 0.9738262518244828,
+                "support": 24001.0
+              },
+              "weighted avg": {
+                "precision": 0.9757505476219486,
+                "recall": 0.9757093454439398,
+                "f1-score": 0.9757236554476271,
+                "support": 24001.0
+              }
+            }
+          },
+          "logistic_regression": {
+            "accuracy": 0.7660930794550227,
+            "f1_weighted": 0.7729825458301398,
+            "classification_report": {
+              "Good": {
+                "precision": 0.43635060902794365,
+                "recall": 0.6789297658862876,
+                "f1-score": 0.531259086943879,
+                "support": 2691.0
+              },
+              "Hazardous": {
+                "precision": 0.8949891741416641,
+                "recall": 0.9015422963078361,
+                "f1-score": 0.8982537834691502,
+                "support": 6419.0
+              },
+              "Moderate": {
+                "precision": 0.7477924944812362,
+                "recall": 0.6597954877454959,
+                "f1-score": 0.7010433732861947,
+                "support": 6161.0
+              },
+              "Unhealthy": {
+                "precision": 0.8478260869565217,
+                "recall": 0.768384879725086,
+                "f1-score": 0.8061531065977647,
+                "support": 8730.0
+              },
+              "accuracy": 0.7660930794550227,
+              "macro avg": {
+                "precision": 0.7317395911518414,
+                "recall": 0.7521631074161763,
+                "f1-score": 0.7341773375742471,
+                "support": 24001.0
+              },
+              "weighted avg": {
+                "precision": 0.7886265695320557,
+                "recall": 0.7660930794550227,
+                "f1-score": 0.7729825458301398,
+                "support": 24001.0
+              }
+            }
+          }
+        },
+        "feature_columns": [
+          "PM2.5",
+          "PM10",
+          "NO2",
+          "SO2",
+          "City"
+        ]
+      }
+    },
+    "arima_baseline": {
+      "metrics": {
+        "model": "ARIMA",
+        "order": [
+          2,
+          1,
+          2
+        ],
+        "cities_trained": 8,
+        "aggregate": {
+          "mae_mean": 26.154860184005237,
+          "rmse_mean": 33.00834300868274,
+          "mae_median": 19.550150301071483,
+          "rmse_median": 26.977343046806126
+        },
+        "per_city": {
+          "Jaipur": {
+            "mae": 18.932458832622633,
+            "rmse": 23.923581233667043,
+            "holdout": 72,
+            "last_actual": 70.0,
+            "last_predicted": 92.81947642350369
+          },
+          "Lucknow": {
+            "mae": 38.01120462957663,
+            "rmse": 42.2914657641649,
+            "holdout": 72,
+            "last_actual": 76.0,
+            "last_predicted": 124.57115948219037
+          },
+          "Delhi": {
+            "mae": 28.314832009373195,
+            "rmse": 39.49503372087508,
+            "holdout": 72,
+            "last_actual": 101.0,
+            "last_predicted": 116.54637755590697
+          },
+          "Hyderabad": {
+            "mae": 18.122045253498413,
+            "rmse": 22.21202100523284,
+            "holdout": 72,
+            "last_actual": 48.0,
+            "last_predicted": 70.25201875912943
+          },
+          "Chennai": {
+            "mae": 17.786894414374096,
+            "rmse": 25.582728480797627,
+            "holdout": 72,
+            "last_actual": 92.0,
+            "last_predicted": 72.65084558061531
+          },
+          "Ahmedabad": {
+            "mae": 53.336015754995195,
+            "rmse": 56.607227771112264,
+            "holdout": 72,
+            "last_actual": 119.0,
+            "last_predicted": 166.89344855483222
+          },
+          "Chandigarh": {
+            "mae": 20.167841769520336,
+            "rmse": 25.76231634030561,
+            "holdout": 72,
+            "last_actual": 66.0,
+            "last_predicted": 48.9970011560329
+          },
+          "Nagpur": {
+            "mae": 14.567588808081403,
+            "rmse": 28.192369753306643,
+            "holdout": 72,
+            "last_actual": 76.5,
+            "last_predicted": 79.82649641012905
+          }
+        }
+      },
+      "available": true
+    }
+  }
+}

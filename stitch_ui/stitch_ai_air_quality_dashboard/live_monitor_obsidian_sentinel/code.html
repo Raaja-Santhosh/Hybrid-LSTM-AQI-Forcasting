@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>SENTINEL_AQI | Live Monitor</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;400;500;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "outline-variant": "#46484f",
+                        "on-primary-container": "#003c14",
+                        "surface-dim": "#0c0e14",
+                        "secondary-fixed": "#ffc3be",
+                        "on-primary-fixed": "#00481a",
+                        "surface-container-lowest": "#000000",
+                        "tertiary-fixed": "#52b9ff",
+                        "on-secondary-container": "#ffdbd8",
+                        "on-surface": "#e5e4ed",
+                        "surface-variant": "#23262e",
+                        "secondary-container": "#a80619",
+                        "tertiary-container": "#20acfa",
+                        "secondary": "#ff716a",
+                        "on-background": "#e5e4ed",
+                        "on-tertiary-fixed": "#001a2b",
+                        "inverse-surface": "#faf8ff",
+                        "primary-fixed-dim": "#44ef74",
+                        "surface-tint": "#57fe81",
+                        "on-primary": "#005d24",
+                        "error-container": "#b92902",
+                        "surface-container-low": "#11131a",
+                        "secondary-dim": "#ff716a",
+                        "on-surface-variant": "#aaaab3",
+                        "primary-fixed": "#57fe81",
+                        "outline": "#74757d",
+                        "tertiary": "#52b9ff",
+                        "secondary-fixed-dim": "#ffafa9",
+                        "error-dim": "#d53d18",
+                        "background": "#0c0e14",
+                        "inverse-primary": "#006e2c",
+                        "on-tertiary-fixed-variant": "#003d5d",
+                        "on-secondary": "#490005",
+                        "surface-container-highest": "#23262e",
+                        "surface-container-high": "#1d1f27",
+                        "on-tertiary-container": "#00283f",
+                        "on-error-container": "#ffd2c8",
+                        "primary-dim": "#44ef74",
+                        "on-error": "#450900",
+                        "on-primary-fixed-variant": "#006829",
+                        "tertiary-dim": "#0ea6f4",
+                        "tertiary-fixed-dim": "#20acfa",
+                        "primary": "#57fe81",
+                        "surface": "#0c0e14",
+                        "primary-container": "#00cf59",
+                        "surface-bright": "#292c35",
+                        "on-secondary-fixed": "#70000c",
+                        "on-secondary-fixed-variant": "#a50318",
+                        "on-tertiary": "#003450",
+                        "error": "#ff7351",
+                        "surface-container": "#171921",
+                        "inverse-on-surface": "#53555c"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "body": ["Manrope"],
+                        "label": ["Manrope"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            background-color: #0c0e14;
+            color: #e5e4ed;
+            font-family: 'Manrope', sans-serif;
+        }
+        .glass-panel {
+            background: rgba(29, 31, 39, 0.6);
+            backdrop-filter: blur(12px);
+        }
+        .bento-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 1.5rem;
+        }
+        .status-glow {
+            box-shadow: 0 0 12px rgba(87, 254, 129, 0.3);
+        }
+    </style>
+</head>
+<body class="bg-surface-dim selection:bg-primary selection:text-on-primary">
+<!-- SideNavBar Component -->
+<aside class="h-screen w-64 fixed left-0 top-0 flex flex-col bg-[#0c0e14] border-r border-[#1d1f27] z-50">
+<div class="p-6 flex items-center gap-3">
+<div class="w-10 h-10 rounded bg-primary-container/20 flex items-center justify-center border border-primary/20">
+<span class="material-symbols-outlined text-[#57fe81]" data-icon="sensors">sensors</span>
+</div>
+<div>
+<h1 class="text-[#57fe81] font-black tracking-tight leading-none text-lg">NODE_SENTINEL</h1>
+<p class="text-on-surface-variant text-[10px] uppercase tracking-widest font-bold">Precision Monitoring</p>
+</div>
+</div>
+<nav class="flex-1 mt-4 px-2 space-y-1">
+<a class="text-[#e5e4ed]/70 hover:text-[#e5e4ed] px-4 py-3 flex items-center gap-3 transition-all hover:bg-[#11131a] hover:translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-medium text-sm">Dashboard</span>
+</a>
+<!-- Active Tab: Live Monitor -->
+<a class="text-[#57fe81] bg-[#1d1f27] border-l-4 border-[#57fe81] px-4 py-3 flex items-center gap-3 transition-all hover:translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="sensors">sensors</span>
+<span class="font-bold text-sm">Live Monitor</span>
+</a>
+<a class="text-[#e5e4ed]/70 hover:text-[#e5e4ed] px-4 py-3 flex items-center gap-3 transition-all hover:bg-[#11131a] hover:translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="online_prediction">online_prediction</span>
+<span class="font-medium text-sm">Forecast</span>
+</a>
+<a class="text-[#e5e4ed]/70 hover:text-[#e5e4ed] px-4 py-3 flex items-center gap-3 transition-all hover:bg-[#11131a] hover:translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="health_and_safety">health_and_safety</span>
+<span class="font-medium text-sm">Health Risk</span>
+</a>
+<a class="text-[#e5e4ed]/70 hover:text-[#e5e4ed] px-4 py-3 flex items-center gap-3 transition-all hover:bg-[#11131a] hover:translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span class="font-medium text-sm">Model Metrics</span>
+</a>
+<a class="text-[#e5e4ed]/70 hover:text-[#e5e4ed] px-4 py-3 flex items-center gap-3 transition-all hover:bg-[#11131a] hover:translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="description">description</span>
+<span class="font-medium text-sm">Reports</span>
+</a>
+<a class="text-[#e5e4ed]/70 hover:text-[#e5e4ed] px-4 py-3 flex items-center gap-3 transition-all hover:bg-[#11131a] hover:translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-medium text-sm">Settings</span>
+</a>
+</nav>
+<div class="mt-auto px-4 pb-6 space-y-4">
+<button class="w-full py-3 px-4 bg-secondary-container hover:bg-secondary text-on-surface text-[10px] font-black rounded border border-secondary/20 transition-all duration-200 flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="bolt">bolt</span>
+                EMERGENCY SHUTDOWN
+            </button>
+<div class="pt-4 border-t border-[#1d1f27]">
+<a class="text-[#e5e4ed]/70 hover:text-[#e5e4ed] py-2 flex items-center gap-3 text-xs" href="#">
+<span class="material-symbols-outlined text-sm" data-icon="help_outline">help_outline</span>
+                    Support
+                </a>
+<a class="text-[#e5e4ed]/70 hover:text-[#e5e4ed] py-2 flex items-center gap-3 text-xs" href="#">
+<span class="material-symbols-outlined text-sm" data-icon="lan">lan</span>
+                    System Status
+                </a>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="pl-64 min-h-screen">
+<!-- TopNavBar Component -->
+<header class="flex justify-between items-center px-6 w-full border-b border-[#1d1f27] h-16 bg-[#0c0e14] sticky top-0 z-40">
+<div class="flex items-center gap-4">
+<span class="text-xl font-bold tracking-tighter text-[#57fe81] uppercase font-manrope">SENTINEL_AQI</span>
+<div class="h-6 w-[1px] bg-[#1d1f27]"></div>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary status-glow"></span>
+<span class="text-[10px] font-bold text-primary/80 uppercase tracking-widest">Live Node-042 Stream</span>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="relative flex items-center bg-[#11131a] rounded-lg px-3 py-1.5 border border-[#1d1f27] w-64">
+<span class="material-symbols-outlined text-on-surface-variant text-lg" data-icon="search">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-xs text-on-surface placeholder-on-surface-variant/40 w-full" placeholder="Filter Telemetry..." type="text"/>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-[#e5e4ed]/60 hover:text-[#57fe81] transition-colors relative">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute -top-1 -right-1 w-2 h-2 bg-secondary rounded-full"></span>
+</button>
+<button class="text-[#e5e4ed]/60 hover:text-[#57fe81] transition-colors">
+<span class="material-symbols-outlined" data-icon="account_tree">account_tree</span>
+</button>
+<div class="h-8 w-8 rounded-full bg-[#1d1f27] border border-[#57fe81]/30 overflow-hidden">
+<img alt="System Administrator Avatar" class="w-full h-full object-cover" data-alt="Close-up portrait of a professional system administrator in a dark tech-focused environment with subtle green lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBg-8nGdyyu6TINUz8TcABCdWc4tYjIJ0s16iALBVnwpU-oacZezreE-gZ-FUM0puj9LgeX7zNh1DF0MpnC_Bh7sKyNCHzypSwd49TMG3gvi3fAvPYolDQIuf4Chi3eTxnVDW39ZVnbzEqfjQMf0bZjEAA4FBAx-DVdJ-8EA6Me9BUNLdmotbrj2rKHi0OmsX_7G6adt9g8_ccq88RpzfC5zZD3dRG_CTSM75yvWxAevgZdJefH2ejJ_t1fZy4l8WWRwdkMvpIVUAc"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Live Feed Content -->
+<div class="p-8 max-w-[1600px] mx-auto space-y-8">
+<!-- Header Section -->
+<div class="flex justify-between items-end">
+<div>
+<span class="text-[10px] font-bold text-primary uppercase tracking-widest block mb-1">Telemetry Stream</span>
+<h2 class="text-4xl font-bold tracking-tight text-on-surface">Simulated IoT Feed</h2>
+</div>
+<div class="flex gap-4">
+<div class="glass-panel px-4 py-2 rounded-lg border border-primary/10">
+<span class="text-[9px] text-on-surface-variant block uppercase font-bold">Uptime</span>
+<span class="text-primary font-mono text-lg">14d 02h 45m</span>
+</div>
+<div class="glass-panel px-4 py-2 rounded-lg border border-primary/10">
+<span class="text-[9px] text-on-surface-variant block uppercase font-bold">Data Rate</span>
+<span class="text-primary font-mono text-lg">24.5 KB/s</span>
+</div>
+</div>
+</div>
+<!-- Bento Grid Dashboard -->
+<div class="bento-grid">
+<!-- Gauges Row -->
+<div class="col-span-12 lg:col-span-3 bg-surface-container-low rounded-xl p-6 border-l-2 border-primary/40 relative overflow-hidden">
+<div class="absolute top-0 right-0 p-4 opacity-5">
+<span class="material-symbols-outlined text-6xl" data-icon="air">air</span>
+</div>
+<div class="flex justify-between items-start mb-6">
+<span class="text-xs font-bold text-on-surface-variant uppercase">PM2.5 Level</span>
+<span class="px-2 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-bold">OPTIMAL</span>
+</div>
+<div class="flex items-baseline gap-2 mb-2">
+<span class="text-5xl font-black tracking-tighter">12.4</span>
+<span class="text-on-surface-variant text-sm font-medium">µg/m³</span>
+</div>
+<div class="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden mt-4">
+<div class="bg-primary h-full w-[12%]" style="box-shadow: 0 0 8px #57fe81;"></div>
+</div>
+</div>
+<div class="col-span-12 lg:col-span-3 bg-surface-container-low rounded-xl p-6 border-l-2 border-primary/40">
+<div class="flex justify-between items-start mb-6">
+<span class="text-xs font-bold text-on-surface-variant uppercase">PM10 Level</span>
+<span class="px-2 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-bold">NORMAL</span>
+</div>
+<div class="flex items-baseline gap-2 mb-2">
+<span class="text-5xl font-black tracking-tighter">18.2</span>
+<span class="text-on-surface-variant text-sm font-medium">µg/m³</span>
+</div>
+<div class="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden mt-4">
+<div class="bg-primary h-full w-[18%]" style="box-shadow: 0 0 8px #57fe81;"></div>
+</div>
+</div>
+<div class="col-span-12 lg:col-span-3 bg-surface-container-low rounded-xl p-6 border-l-2 border-secondary/40">
+<div class="flex justify-between items-start mb-6">
+<span class="text-xs font-bold text-on-surface-variant uppercase">CO Density</span>
+<span class="px-2 py-0.5 rounded bg-secondary/10 text-secondary text-[10px] font-bold">ELEVATED</span>
+</div>
+<div class="flex items-baseline gap-2 mb-2">
+<span class="text-5xl font-black tracking-tighter">0.82</span>
+<span class="text-on-surface-variant text-sm font-medium">ppm</span>
+</div>
+<div class="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden mt-4">
+<div class="bg-secondary h-full w-[65%]" style="box-shadow: 0 0 8px #ff716a;"></div>
+</div>
+</div>
+<div class="col-span-12 lg:col-span-3 bg-surface-container-low rounded-xl p-6 border-l-2 border-primary/40">
+<div class="flex justify-between items-start mb-6">
+<span class="text-xs font-bold text-on-surface-variant uppercase">NO2 Index</span>
+<span class="px-2 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-bold">STABLE</span>
+</div>
+<div class="flex items-baseline gap-2 mb-2">
+<span class="text-5xl font-black tracking-tighter">24.1</span>
+<span class="text-on-surface-variant text-sm font-medium">ppb</span>
+</div>
+<div class="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden mt-4">
+<div class="bg-primary h-full w-[24%]" style="box-shadow: 0 0 8px #57fe81;"></div>
+</div>
+</div>
+<!-- Main Visualization Area -->
+<div class="col-span-12 lg:col-span-8 bg-surface-container-low rounded-xl p-8 relative min-h-[400px]">
+<div class="flex justify-between items-center mb-10">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-primary" data-icon="monitoring">monitoring</span>
+<h3 class="text-lg font-bold tracking-tight">Real-time Telemetry Trend</h3>
+</div>
+<div class="flex gap-2">
+<button class="px-3 py-1 bg-primary text-on-primary text-[10px] font-bold rounded">LIVE</button>
+<button class="px-3 py-1 bg-surface-container-highest text-on-surface-variant text-[10px] font-bold rounded">1H</button>
+<button class="px-3 py-1 bg-surface-container-highest text-on-surface-variant text-[10px] font-bold rounded">24H</button>
+</div>
+</div>
+<!-- Scrolling Line Chart Mockup -->
+<div class="w-full h-64 relative flex items-end overflow-hidden">
+<svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 800 200">
+<defs>
+<lineargradient id="chartGradient" x1="0" x2="0" y1="0" y2="1">
+<stop offset="5%" stop-color="#57fe81" stop-opacity="0.3"></stop>
+<stop offset="95%" stop-color="#57fe81" stop-opacity="0"></stop>
+</lineargradient>
+</defs>
+<path d="M0,150 Q40,120 80,140 T160,110 T240,130 T320,100 T400,120 T480,90 T560,110 T640,80 T720,100 T800,70 L800,200 L0,200 Z" fill="url(#chartGradient)"></path>
+<path d="M0,150 Q40,120 80,140 T160,110 T240,130 T320,100 T400,120 T480,90 T560,110 T640,80 T720,100 T800,70" fill="none" stroke="#57fe81" stroke-width="3"></path>
+<!-- Scanning line -->
+<line opacity="0.5" stroke="#57fe81" stroke-dasharray="4,4" stroke-width="1" x1="750" x2="750" y1="0" y2="200"></line>
+</svg>
+<!-- Grid Lines -->
+<div class="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-5">
+<div class="h-[1px] w-full bg-on-surface"></div>
+<div class="h-[1px] w-full bg-on-surface"></div>
+<div class="h-[1px] w-full bg-on-surface"></div>
+<div class="h-[1px] w-full bg-on-surface"></div>
+<div class="h-[1px] w-full bg-on-surface"></div>
+</div>
+</div>
+<div class="mt-6 flex justify-between text-[10px] font-mono text-on-surface-variant uppercase tracking-widest">
+<span>T-30 Readings</span>
+<span>Synchronized with Node-042</span>
+<span>Now</span>
+</div>
+</div>
+<!-- Secondary Data Area (Raw Feed) -->
+<div class="col-span-12 lg:col-span-4 bg-surface-container-low rounded-xl p-6 border border-outline-variant/10">
+<div class="flex items-center gap-2 mb-6">
+<span class="material-symbols-outlined text-primary text-sm" data-icon="terminal">terminal</span>
+<h3 class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Active Process Log</h3>
+</div>
+<div class="space-y-4 font-mono text-[11px] h-[340px] overflow-y-auto pr-2 custom-scrollbar">
+<div class="flex gap-4 p-2 bg-surface-container-highest/30 rounded border-l-2 border-primary/40">
+<span class="text-primary/60">12:04:12</span>
+<span class="text-on-surface-variant">GET</span>
+<span class="text-primary">VAL:PM2.5(12.4) STATUS(OK)</span>
+</div>
+<div class="flex gap-4 p-2 opacity-80">
+<span class="text-primary/60">12:04:08</span>
+<span class="text-on-surface-variant">SET</span>
+<span class="text-on-surface">FAN_RPM(1200) MANUAL_OVERRIDE</span>
+</div>
+<div class="flex gap-4 p-2 bg-secondary/5 rounded border-l-2 border-secondary/40">
+<span class="text-secondary/60">12:04:02</span>
+<span class="text-secondary">WARN</span>
+<span class="text-on-surface">CO_VAL_LIMIT_EXCEEDED(0.82)</span>
+</div>
+<div class="flex gap-4 p-2 opacity-80">
+<span class="text-primary/60">12:03:58</span>
+<span class="text-on-surface-variant">GET</span>
+<span class="text-primary">VAL:PM10(18.2) STATUS(OK)</span>
+</div>
+<div class="flex gap-4 p-2 opacity-80">
+<span class="text-primary/60">12:03:52</span>
+<span class="text-on-surface-variant">HBT</span>
+<span class="text-on-surface-variant">NODE_042_PULSE:SUCCESS</span>
+</div>
+<div class="flex gap-4 p-2 opacity-80">
+<span class="text-primary/60">12:03:48</span>
+<span class="text-on-surface-variant">GET</span>
+<span class="text-primary">VAL:NO2(24.1) STATUS(OK)</span>
+</div>
+<div class="flex gap-4 p-2 opacity-80">
+<span class="text-primary/60">12:03:42</span>
+<span class="text-on-surface-variant">SYN</span>
+<span class="text-on-surface-variant">GATEWAY_ACK:ENCRYPTED</span>
+</div>
+</div>
+<div class="mt-4 pt-4 border-t border-outline-variant/10 flex justify-between items-center">
+<span class="text-[9px] font-bold text-on-surface-variant">LISTENING ON PORT 8080...</span>
+<div class="flex gap-1">
+<span class="w-1 h-1 rounded-full bg-primary animate-pulse"></span>
+<span class="w-1 h-1 rounded-full bg-primary animate-pulse delay-75"></span>
+<span class="w-1 h-1 rounded-full bg-primary animate-pulse delay-150"></span>
+</div>
+</div>
+</div>
+<!-- Sensor Data Table Section -->
+<div class="col-span-12 bg-surface-container-low rounded-xl overflow-hidden">
+<div class="px-8 py-6 flex justify-between items-center border-b border-[#1d1f27]">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary" data-icon="table_chart">table_chart</span>
+<h3 class="text-lg font-bold">Raw Sensor Metadata</h3>
+</div>
+<button class="flex items-center gap-2 text-xs font-bold text-primary hover:bg-primary/10 px-4 py-2 rounded-lg transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="download">download</span>
+                            EXPORT CSV
+                        </button>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-highest/30">
+<th class="px-8 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Sensor ID</th>
+<th class="px-8 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Metric</th>
+<th class="px-8 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Raw Value</th>
+<th class="px-8 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Units</th>
+<th class="px-8 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Accuracy</th>
+<th class="px-8 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Status</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-[#1d1f27]">
+<tr class="hover:bg-[#1d1f27]/50 transition-colors">
+<td class="px-8 py-5 text-sm font-mono">SN-01-A</td>
+<td class="px-8 py-5 text-sm font-bold">Particulate Matter 2.5</td>
+<td class="px-8 py-5 text-sm font-mono text-primary">12.4332</td>
+<td class="px-8 py-5 text-sm">µg/m³</td>
+<td class="px-8 py-5 text-sm">99.8%</td>
+<td class="px-8 py-5">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span class="text-[10px] font-bold uppercase">Active</span>
+</div>
+</td>
+</tr>
+<tr class="hover:bg-[#1d1f27]/50 transition-colors">
+<td class="px-8 py-5 text-sm font-mono">SN-01-B</td>
+<td class="px-8 py-5 text-sm font-bold">Particulate Matter 10</td>
+<td class="px-8 py-5 text-sm font-mono text-primary">18.2110</td>
+<td class="px-8 py-5 text-sm">µg/m³</td>
+<td class="px-8 py-5 text-sm">98.5%</td>
+<td class="px-8 py-5">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span class="text-[10px] font-bold uppercase">Active</span>
+</div>
+</td>
+</tr>
+<tr class="hover:bg-[#1d1f27]/50 transition-colors">
+<td class="px-8 py-5 text-sm font-mono">SN-02-A</td>
+<td class="px-8 py-5 text-sm font-bold">Carbon Monoxide</td>
+<td class="px-8 py-5 text-sm font-mono text-secondary">0.8201</td>
+<td class="px-8 py-5 text-sm">ppm</td>
+<td class="px-8 py-5 text-sm">97.2%</td>
+<td class="px-8 py-5">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary shadow-[0_0_8px_#ff716a]"></span>
+<span class="text-[10px] font-bold uppercase text-secondary">Alert</span>
+</div>
+</td>
+</tr>
+<tr class="hover:bg-[#1d1f27]/50 transition-colors">
+<td class="px-8 py-5 text-sm font-mono">SN-03-A</td>
+<td class="px-8 py-5 text-sm font-bold">Nitrogen Dioxide</td>
+<td class="px-8 py-5 text-sm font-mono text-primary">24.1084</td>
+<td class="px-8 py-5 text-sm">ppb</td>
+<td class="px-8 py-5 text-sm">99.1%</td>
+<td class="px-8 py-5">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span class="text-[10px] font-bold uppercase">Active</span>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Contextual System Alert (Overlay) -->
+<div class="fixed bottom-6 right-6 z-50 glass-panel border border-secondary/20 p-4 rounded-xl max-w-sm flex gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+<div class="w-10 h-10 rounded-full bg-secondary/20 flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-secondary" data-icon="warning">warning</span>
+</div>
+<div>
+<h4 class="text-sm font-bold text-on-surface">Inversion Alert</h4>
+<p class="text-[11px] text-on-surface-variant mt-1 leading-relaxed">CO levels rising in sector B4. System suggests activating secondary filtration cycle within 15 minutes.</p>
+<div class="mt-3 flex gap-3">
+<button class="text-[10px] font-black text-secondary hover:underline">ACKNOWLEDGE</button>
+<button class="text-[10px] font-black text-on-surface-variant hover:text-on-surface">DISMISS</button>
+</div>
+</div>
+</div>
+</body></html>

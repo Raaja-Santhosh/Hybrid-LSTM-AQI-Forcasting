@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>SENTINEL_AQI - Health Risk</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "outline-variant": "#46484f",
+                        "on-primary-container": "#003c14",
+                        "surface-dim": "#0c0e14",
+                        "secondary-fixed": "#ffc3be",
+                        "on-primary-fixed": "#00481a",
+                        "surface-container-lowest": "#000000",
+                        "tertiary-fixed": "#52b9ff",
+                        "on-secondary-container": "#ffdbd8",
+                        "on-surface": "#e5e4ed",
+                        "surface-variant": "#23262e",
+                        "secondary-container": "#a80619",
+                        "tertiary-container": "#20acfa",
+                        "secondary": "#ff716a",
+                        "on-background": "#e5e4ed",
+                        "on-tertiary-fixed": "#001a2b",
+                        "inverse-surface": "#faf8ff",
+                        "primary-fixed-dim": "#44ef74",
+                        "surface-tint": "#57fe81",
+                        "on-primary": "#005d24",
+                        "error-container": "#b92902",
+                        "surface-container-low": "#11131a",
+                        "secondary-dim": "#ff716a",
+                        "on-surface-variant": "#aaaab3",
+                        "primary-fixed": "#57fe81",
+                        "outline": "#74757d",
+                        "tertiary": "#52b9ff",
+                        "secondary-fixed-dim": "#ffafa9",
+                        "error-dim": "#d53d18",
+                        "background": "#0c0e14",
+                        "inverse-primary": "#006e2c",
+                        "on-tertiary-fixed-variant": "#003d5d",
+                        "on-secondary": "#490005",
+                        "surface-container-highest": "#23262e",
+                        "surface-container-high": "#1d1f27",
+                        "on-tertiary-container": "#00283f",
+                        "on-error-container": "#ffd2c8",
+                        "primary-dim": "#44ef74",
+                        "on-error": "#450900",
+                        "on-primary-fixed-variant": "#006829",
+                        "tertiary-dim": "#0ea6f4",
+                        "tertiary-fixed-dim": "#20acfa",
+                        "primary": "#57fe81",
+                        "surface": "#0c0e14",
+                        "primary-container": "#00cf59",
+                        "surface-bright": "#292c35",
+                        "on-secondary-fixed": "#70000c",
+                        "on-secondary-fixed-variant": "#a50318",
+                        "on-tertiary": "#003450",
+                        "error": "#ff7351",
+                        "surface-container": "#171921",
+                        "inverse-on-surface": "#53555c"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "body": ["Manrope"],
+                        "label": ["Manrope"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Manrope', sans-serif; }
+    </style>
+</head>
+<body class="bg-background text-on-surface selection:bg-primary selection:text-on-primary">
+<!-- Sidebar Navigation -->
+<aside class="h-screen w-64 fixed left-0 top-0 flex flex-col h-full border-r border-[#1d1f27] bg-[#0c0e14] dark:bg-[#0c0e14] z-50">
+<div class="p-6">
+<div class="flex items-center gap-3 mb-8">
+<div class="w-8 h-8 bg-surface-container-highest rounded flex items-center justify-center">
+<span class="material-symbols-outlined text-[#57fe81]" style="font-variation-settings: 'FILL' 1;">security</span>
+</div>
+<div>
+<h1 class="text-[#57fe81] font-black tracking-tighter">NODE_SENTINEL</h1>
+<p class="text-[0.6rem] text-on-surface-variant uppercase tracking-[0.2em]">Precision Monitoring</p>
+</div>
+</div>
+<nav class="space-y-1">
+<!-- Dashboard -->
+<a class="text-[#e5e4ed]/70 hover:text-[#e5e4ed] px-4 py-3 flex items-center gap-3 transition-all hover:bg-[#11131a] hover:translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-manrope text-sm font-medium">Dashboard</span>
+</a>
+<!-- Live Monitor -->
+<a class="text-[#e5e4ed]/70 hover:text-[#e5e4ed] px-4 py-3 flex items-center gap-3 transition-all hover:bg-[#11131a] hover:translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="sensors">sensors</span>
+<span class="font-manrope text-sm font-medium">Live Monitor</span>
+</a>
+<!-- Forecast -->
+<a class="text-[#e5e4ed]/70 hover:text-[#e5e4ed] px-4 py-3 flex items-center gap-3 transition-all hover:bg-[#11131a] hover:translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="online_prediction">online_prediction</span>
+<span class="font-manrope text-sm font-medium">Forecast</span>
+</a>
+<!-- Health Risk (ACTIVE) -->
+<a class="text-[#57fe81] bg-[#1d1f27] border-l-4 border-[#57fe81] px-4 py-3 flex items-center gap-3 transition-all hover:bg-[#11131a] hover:translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="health_and_safety" style="font-variation-settings: 'FILL' 1;">health_and_safety</span>
+<span class="font-manrope text-sm font-medium">Health Risk</span>
+</a>
+<!-- Model Metrics -->
+<a class="text-[#e5e4ed]/70 hover:text-[#e5e4ed] px-4 py-3 flex items-center gap-3 transition-all hover:bg-[#11131a] hover:translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span class="font-manrope text-sm font-medium">Model Metrics</span>
+</a>
+<!-- Reports -->
+<a class="text-[#e5e4ed]/70 hover:text-[#e5e4ed] px-4 py-3 flex items-center gap-3 transition-all hover:bg-[#11131a] hover:translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="description">description</span>
+<span class="font-manrope text-sm font-medium">Reports</span>
+</a>
+<!-- Settings -->
+<a class="text-[#e5e4ed]/70 hover:text-[#e5e4ed] px-4 py-3 flex items-center gap-3 transition-all hover:bg-[#11131a] hover:translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-manrope text-sm font-medium">Settings</span>
+</a>
+</nav>
+</div>
+<div class="mt-auto p-6 border-t border-[#1d1f27]">
+<button class="w-full py-3 mb-6 bg-secondary-container text-secondary font-bold text-xs rounded uppercase tracking-widest hover:opacity-90 active:scale-95 transition-all">
+                EMERGENCY SHUTDOWN
+            </button>
+<div class="space-y-2">
+<a class="text-[#e5e4ed]/70 hover:text-[#e5e4ed] flex items-center gap-3 text-xs" href="#">
+<span class="material-symbols-outlined text-[18px]" data-icon="help_outline">help_outline</span>
+<span>Support</span>
+</a>
+<a class="text-[#e5e4ed]/70 hover:text-[#e5e4ed] flex items-center gap-3 text-xs" href="#">
+<span class="material-symbols-outlined text-[18px]" data-icon="lan">lan</span>
+<span>System Status</span>
+</a>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-64 min-h-screen">
+<!-- Top Bar -->
+<header class="flex justify-between items-center px-6 w-full border-b border-[#1d1f27] bg-[#0c0e14] h-16 sticky top-0 z-40">
+<div class="flex items-center gap-4">
+<span class="text-xl font-bold tracking-tighter text-[#57fe81] uppercase font-manrope">SENTINEL_AQI</span>
+<div class="h-4 w-px bg-outline-variant/30"></div>
+<div class="flex items-center gap-2 px-3 py-1 bg-surface-container-low rounded">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+<span class="text-[0.65rem] font-bold tracking-widest uppercase text-on-surface-variant">Live Feed</span>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="relative">
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors" data-icon="notifications">notifications</span>
+<span class="absolute -top-1 -right-1 w-2 h-2 bg-secondary rounded-full"></span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors" data-icon="account_tree">account_tree</span>
+<div class="flex items-center gap-3 pl-4 border-l border-[#1d1f27]">
+<div class="text-right">
+<p class="text-[0.7rem] font-bold text-on-surface">SYS_ADMIN</p>
+<p class="text-[0.6rem] text-primary/70">Level 07 Clear</p>
+</div>
+<img alt="Admin" class="w-8 h-8 rounded-full border border-primary/20" data-alt="Tactical system administrator profile avatar in dark aesthetic" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAX04lP01SUtkHvzyVvpJFgEwfGyI83wYjjl9bUVEGQ5JVJmNvZsGjGJp_VLYfngN75Gdivf_LnzaXjlf4cv9kEOXUeJ_5MZOPgOFMQQz8pHwqmDw8WyrELW_cev7depoxe_k9CbInzZIdRpp68U3btx_k4EdKSvgQSDfyc9LjCHcdzTpTXuMxXLvRPSngL3dW6x9TxTau4hacL0D3U0Knje1BnQ6fEf37ueFv6GWltUhNWl5V4kUouQkcJYgUrzTwpAHm1XsrdLcU"/>
+</div>
+</div>
+</header>
+<!-- Dashboard Canvas -->
+<div class="p-8 space-y-8">
+<!-- Page Header -->
+<div class="flex flex-col gap-1">
+<span class="text-[0.65rem] font-bold text-primary uppercase tracking-[0.3em]">Module_04 // Diagnostic</span>
+<h2 class="text-3xl font-extrabold tracking-tight text-on-surface">Health Risk Assessment</h2>
+</div>
+<!-- Top Grid: Gauge & Recommendations -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+<!-- Central Risk Gauge -->
+<div class="lg:col-span-5 bg-surface-container-low rounded p-8 flex flex-col items-center justify-center relative overflow-hidden">
+<div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-transparent opacity-30"></div>
+<div class="text-center mb-6">
+<span class="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Real-time Exposure Index</span>
+</div>
+<!-- Modern Gauge Visualization -->
+<div class="relative w-64 h-64 flex items-center justify-center">
+<svg class="w-full h-full transform -rotate-90">
+<circle class="text-surface-container-highest" cx="128" cy="128" fill="transparent" r="110" stroke="currentColor" stroke-width="12"></circle>
+<circle class="text-primary" cx="128" cy="128" fill="transparent" r="110" stroke="currentColor" stroke-dasharray="691" stroke-dashoffset="200" stroke-width="12"></circle>
+</svg>
+<div class="absolute inset-0 flex flex-col items-center justify-center">
+<span class="text-6xl font-black tracking-tighter text-on-surface">72</span>
+<span class="text-sm font-bold text-primary uppercase tracking-widest mt-2">Moderate</span>
+</div>
+</div>
+<div class="mt-8 grid grid-cols-3 gap-8 w-full border-t border-[#1d1f27] pt-8">
+<div class="text-center">
+<p class="text-[0.6rem] text-on-surface-variant uppercase mb-1">PM2.5</p>
+<p class="text-lg font-bold text-on-surface">42.1</p>
+</div>
+<div class="text-center">
+<p class="text-[0.6rem] text-on-surface-variant uppercase mb-1">VOCs</p>
+<p class="text-lg font-bold text-secondary">High</p>
+</div>
+<div class="text-center">
+<p class="text-[0.6rem] text-on-surface-variant uppercase mb-1">OZONE</p>
+<p class="text-lg font-bold text-on-surface">18.4</p>
+</div>
+</div>
+</div>
+<!-- Health Recommendations Panel -->
+<div class="lg:col-span-7 bg-surface-container-low rounded overflow-hidden flex flex-col">
+<div class="p-6 border-b border-[#1d1f27] flex justify-between items-center">
+<h3 class="text-sm font-bold uppercase tracking-widest">System Advisories</h3>
+<span class="px-2 py-1 bg-primary/10 text-primary text-[0.6rem] font-black rounded border border-primary/20">3 ACTIVE THREATS</span>
+</div>
+<div class="p-6 space-y-4 flex-grow overflow-y-auto max-h-[400px]">
+<!-- High Severity Recommendation -->
+<div class="p-4 bg-surface-container-high rounded border-l-4 border-secondary flex gap-4">
+<div class="p-2 bg-secondary/10 rounded h-fit">
+<span class="material-symbols-outlined text-secondary" data-icon="masks">masks</span>
+</div>
+<div>
+<p class="text-sm font-bold text-on-surface mb-1">Respiratory Protection Required</p>
+<p class="text-xs text-on-surface-variant leading-relaxed">Local PM2.5 levels exceeding safe thresholds. Activate N95 filtration protocols if external exposure is necessary.</p>
+</div>
+</div>
+<!-- Safe Recommendation -->
+<div class="p-4 bg-surface-container-high rounded border-l-4 border-primary flex gap-4">
+<div class="p-2 bg-primary/10 rounded h-fit">
+<span class="material-symbols-outlined text-primary" data-icon="air">air</span>
+</div>
+<div>
+<p class="text-sm font-bold text-on-surface mb-1">Ventilation Optimized</p>
+<p class="text-xs text-on-surface-variant leading-relaxed">Indoor air quality remains within nominal range. HEPA systems operating at standard efficiency.</p>
+</div>
+</div>
+<!-- Moderate Recommendation -->
+<div class="p-4 bg-surface-container-high rounded border-l-4 border-tertiary flex gap-4">
+<div class="p-2 bg-tertiary/10 rounded h-fit">
+<span class="material-symbols-outlined text-tertiary" data-icon="exercise">exercise</span>
+</div>
+<div>
+<p class="text-sm font-bold text-on-surface mb-1">Limited Physical Activity</p>
+<p class="text-xs text-on-surface-variant leading-relaxed">Moderate risk for sensitive populations. Reduce high-intensity aerobic exercise during peak ozone hours (12:00 - 16:00).</p>
+</div>
+</div>
+<!-- Extra Recommendation -->
+<div class="p-4 bg-surface-container-high rounded border-l-4 border-outline flex gap-4 opacity-70">
+<div class="p-2 bg-outline/10 rounded h-fit">
+<span class="material-symbols-outlined text-outline" data-icon="water_drop">water_drop</span>
+</div>
+<div>
+<p class="text-sm font-bold text-on-surface mb-1">Hydration Baseline</p>
+<p class="text-xs text-on-surface-variant leading-relaxed">System monitoring indicates dry air conditions. Maintain standard hydration levels to support mucosal barriers.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Bottom Grid: Bar Charts -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+<!-- 7-Day Risk History -->
+<div class="bg-surface-container-low rounded p-6">
+<div class="flex justify-between items-end mb-8">
+<div>
+<h3 class="text-xs font-bold uppercase tracking-[0.2em] text-on-surface-variant mb-1">Exposure Analytics</h3>
+<p class="text-xl font-bold">7-Day Risk History</p>
+</div>
+<div class="text-right">
+<p class="text-[0.6rem] font-bold text-primary">+12% vs PREVIOUS</p>
+</div>
+</div>
+<div class="h-48 flex items-end justify-between gap-4 px-4">
+<div class="flex flex-col items-center flex-1 gap-3 group">
+<div class="w-full bg-surface-container-highest rounded-t-sm h-32 relative">
+<div class="absolute bottom-0 left-0 w-full bg-primary/40 h-full"></div>
+</div>
+<span class="text-[0.6rem] font-bold text-on-surface-variant">MON</span>
+</div>
+<div class="flex flex-col items-center flex-1 gap-3 group">
+<div class="w-full bg-surface-container-highest rounded-t-sm h-32 relative">
+<div class="absolute bottom-0 left-0 w-full bg-primary/40 h-[60%]"></div>
+</div>
+<span class="text-[0.6rem] font-bold text-on-surface-variant">TUE</span>
+</div>
+<div class="flex flex-col items-center flex-1 gap-3 group">
+<div class="w-full bg-surface-container-highest rounded-t-sm h-32 relative">
+<div class="absolute bottom-0 left-0 w-full bg-secondary/60 h-[85%]"></div>
+</div>
+<span class="text-[0.6rem] font-bold text-on-surface-variant">WED</span>
+</div>
+<div class="flex flex-col items-center flex-1 gap-3 group">
+<div class="w-full bg-surface-container-highest rounded-t-sm h-32 relative">
+<div class="absolute bottom-0 left-0 w-full bg-primary/40 h-[45%]"></div>
+</div>
+<span class="text-[0.6rem] font-bold text-on-surface-variant">THU</span>
+</div>
+<div class="flex flex-col items-center flex-1 gap-3 group">
+<div class="w-full bg-surface-container-highest rounded-t-sm h-32 relative">
+<div class="absolute bottom-0 left-0 w-full bg-primary/40 h-[30%]"></div>
+</div>
+<span class="text-[0.6rem] font-bold text-on-surface-variant">FRI</span>
+</div>
+<div class="flex flex-col items-center flex-1 gap-3 group">
+<div class="w-full bg-surface-container-highest rounded-t-sm h-32 relative">
+<div class="absolute bottom-0 left-0 w-full bg-secondary/60 h-[95%] shadow-[0_0_15px_rgba(255,113,106,0.3)]"></div>
+</div>
+<span class="text-[0.6rem] font-bold text-secondary">SAT</span>
+</div>
+<div class="flex flex-col items-center flex-1 gap-3 group">
+<div class="w-full bg-surface-container-highest rounded-t-sm h-32 relative">
+<div class="absolute bottom-0 left-0 w-full bg-primary/40 h-[70%]"></div>
+</div>
+<span class="text-[0.6rem] font-bold text-on-surface-variant">SUN</span>
+</div>
+</div>
+</div>
+<!-- Feature Importance Chart -->
+<div class="bg-surface-container-low rounded p-6">
+<div class="flex justify-between items-center mb-8">
+<div>
+<h3 class="text-xs font-bold uppercase tracking-[0.2em] text-on-surface-variant mb-1">Random Forest Classifier</h3>
+<p class="text-xl font-bold">Feature Importance</p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="info">info</span>
+</div>
+<div class="space-y-4">
+<!-- Feature 1 -->
+<div class="space-y-1">
+<div class="flex justify-between text-[0.65rem] font-bold uppercase tracking-wider text-on-surface-variant">
+<span>PM2.5 CONCENTRATION</span>
+<span class="text-primary">0.42</span>
+</div>
+<div class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 84%;"></div>
+</div>
+</div>
+<!-- Feature 2 -->
+<div class="space-y-1">
+<div class="flex justify-between text-[0.65rem] font-bold uppercase tracking-wider text-on-surface-variant">
+<span>LOCAL HUMIDITY</span>
+<span class="text-on-surface">0.28</span>
+</div>
+<div class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-on-surface-variant rounded-full" style="width: 56%;"></div>
+</div>
+</div>
+<!-- Feature 3 -->
+<div class="space-y-1">
+<div class="flex justify-between text-[0.65rem] font-bold uppercase tracking-wider text-on-surface-variant">
+<span>NO2 OXIDATION</span>
+<span class="text-on-surface">0.15</span>
+</div>
+<div class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-on-surface-variant rounded-full" style="width: 30%;"></div>
+</div>
+</div>
+<!-- Feature 4 -->
+<div class="space-y-1">
+<div class="flex justify-between text-[0.65rem] font-bold uppercase tracking-wider text-on-surface-variant">
+<span>WIND VELOCITY</span>
+<span class="text-on-surface">0.09</span>
+</div>
+<div class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-on-surface-variant rounded-full" style="width: 18%;"></div>
+</div>
+</div>
+<!-- Feature 5 -->
+<div class="space-y-1">
+<div class="flex justify-between text-[0.65rem] font-bold uppercase tracking-wider text-on-surface-variant">
+<span>TEMP_GRADIENT</span>
+<span class="text-on-surface">0.06</span>
+</div>
+<div class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-on-surface-variant rounded-full" style="width: 12%;"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Bottom Asymmetric Meta Data Section -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+<div class="md:col-span-2 bg-[#11131a] rounded p-6 flex items-center justify-between border-l-4 border-primary">
+<div>
+<h4 class="text-[0.65rem] font-black text-primary uppercase tracking-[0.2em] mb-1">Model Integrity</h4>
+<p class="text-sm text-on-surface-variant">The Random Forest model is operating with 98.4% confidence based on local node clusters.</p>
+</div>
+<div class="flex -space-x-2">
+<img alt="Node 1" class="w-8 h-8 rounded-full border-2 border-background" data-alt="Close up of digital avatar for node monitor 1" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA55Ukapy_zUcyJD6RKJiA0f2PeUgfrL2w0qY2D4T1We9TzPNjhiDzlR2V4_y7nfVeJZ6hTEIcOCxB08mwYnz8G2-CVL9YDR6Rf5QmQzNu3Ti4RcckyqjL6NQqweyV0YxIO_jEA5DtpWhZfgpLXvFcXo7C2zLgw_FM8-GGBsEsy_ps986cydRfZFZrjuRGWE690bxTmKqK9HwbX2ToM8RniExXUUd0lDcVMfJBwFCn6S-VXpEI7ppXuqRLkaSy8rg-_Ec-tyCV2Bsc"/>
+<img alt="Node 2" class="w-8 h-8 rounded-full border-2 border-background" data-alt="Close up of digital avatar for node monitor 2" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCwTtAi61iPpkfS8r7wxWuonIH0Ytn9sh8ZW-DVQ5KxIjJsfQab7hjV_zfe15Bb0Sa0yWJKXPjc1oodAQMIEOlwRGj-egv3EYmBFoUutXURoRLFI-nXHSimG3dtp2D-S7iXgzzTaCFbURMDw8M2oCBXQug0sjXF7vXtD0kUaSMeQ53KGAyBlQ6GDhm4MR8OL_-0d8hPwkI39KF_-CQfcocgwWJYnIcthBvGymPDWEOPzTAuDzyMU6Pj5yW1K2usxlphESdgBkW3Epw"/>
+<div class="w-8 h-8 rounded-full border-2 border-background bg-surface-container-highest flex items-center justify-center text-[0.6rem] font-bold">+12</div>
+</div>
+</div>
+<div class="bg-surface-container-low rounded p-6 flex flex-col justify-between border-r-4 border-secondary/20">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary" data-icon="warning">warning</span>
+<span class="text-[0.65rem] font-bold uppercase tracking-widest text-on-surface">Critical Thresholds</span>
+</div>
+<div class="mt-4">
+<p class="text-2xl font-black text-secondary">03</p>
+<p class="text-[0.6rem] text-on-surface-variant uppercase">Exceedances detected today</p>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>
