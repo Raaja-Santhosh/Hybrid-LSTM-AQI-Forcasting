@@ -90,13 +90,7 @@ This project develops a **real-time air quality intelligence system** for predic
               │  (frontend/)    │    │   (app.py)    │  │  (atmosiq)  │
               │  9 pages        │    │   4 tabs      │  │  3 collections│
               └─────────────────┘    └──────────────┘  └─────────────┘
-                        │
-                        ▼
-              ┌─────────────────┐
-              │  IoT Simulator  │
-              │  (iot_simulator)│
-              │  → CSV logs     │
-              └─────────────────┘
+
 ```
 
 ### 2.1 Data Flow

@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.venv/
+venv/
+ENV/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data/Reports
+reports/*.csv
+reports/*.json
+!reports/.gitkeep
+
+# AI/IDE
+.gemini/
+.antigravity/
+.vscode/
+.idea/
+stitch_ui/
+*.zip

@@ -19,10 +19,7 @@ A rapid prototype for predicting the Air Quality Index (AQI) and health risk cla
    uvicorn main:app --reload
    ```
 
-4. **Run IoT Simulation (optional):**
-   ```bash
-   python iot_simulator.py --base-url http://127.0.0.1:8000 --cities Delhi,Mumbai,Bangalore --interval 30 --iterations 10
-   ```
+
 
 5. **Train ARIMA Baseline (optional):**
    ```bash
@@ -42,5 +39,4 @@ A rapid prototype for predicting the Air Quality Index (AQI) and health risk cla
 - `/api/report-summary/export?city=Delhi`
 
 ## Reports
-- IoT simulation log: `reports/iot_simulation_log.csv`
 - Exported summary reports: `reports/report_summary_<city>_<timestamp>.json`
